@@ -1,0 +1,335 @@
+"""
+Nautilus – Lobster-style media engine in Python.
+Search → Movie/TV → Season → Episode → Play (mpv) with provider, subs, quality, continue, next episode.
+"""
+import argparse
+import asyncio
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from rich.prompt import Prompt, IntPrompt
+
+from core.scraper import FlixScraper
+from core.player import MediaPlayer
+from core.database import Database
+from models.media import MediaItem
+from utils.config import config
+from ui import (
+    console,
+    banner,
+    section_title,
+    compact_list_results,
+    compact_list_simple,
+    show_history_cards,
+    stream_panel,
+    prompt_select,
+    prompt_text,
+    status_msg,
+    ok_msg,
+    err_msg,
+    warn_msg,
+)
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Nautilus – Search and play movies/TV (lobster-style).",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python app.py                    # Search and play
+  python app.py -l                 # Link only (copy URL for VLC)
+  python app.py -c                 # Continue from history
+  python app.py -j                 # Output JSON (video/subs) and exit
+  python app.py -p UpCloud -q 720  # Provider and quality
+  python app.py -n                 # No subtitles
+  python app.py -d [path]          # Download (path defaults to config or cwd)
+        """,
+    )
+    p.add_argument("-c", "--continue", dest="continue_watch", action="store_true", help="Continue from history")
+    p.add_argument("-d", "--download", nargs="?", const="", metavar="PATH", help="Download video (optional path, else config/cwd)")
+    p.add_argument("-l", "--link", action="store_true", help="Only print stream URL (e.g. for VLC)")
+    p.add_argument("-j", "--json", action="store_true", help="Output decrypt JSON and exit")
+    p.add_argument("-p", "--provider", default=None, help="Provider (default: Vidcloud)")
+    p.add_argument("-q", "--quality", default=None, help="Quality e.g. 1080, 720 (default from config)")
+    p.add_argument("-n", "--no-subs", action="store_true", help="Disable subtitles")
+    p.add_argument("-e", "--edit", action="store_true", help="Edit config file")
+    p.add_argument("query", nargs="*", help="Search query (optional)")
+    return p.parse_args()
+
+
+def _apply_cli_config(args):
+    if args.provider is not None:
+        config.settings["provider"] = args.provider
+    if args.quality is not None:
+        config.settings["quality"] = args.quality
+    if args.no_subs:
+        config.settings["no_subs"] = True
+
+
+def _safe_filename(title: str) -> str:
+    """Sanitize title for use as filename (lobster: tr -d ':/')."""
+    return "".join(c for c in title if c not in ":/\\*?\"<>|").strip() or "nautilus_download"
+
+
+def _download_video(url: str, title: str, download_dir: str, subs_links: list) -> None:
+    """Download stream with ffmpeg (lobster-style). Optional subtitles burned in."""
+    out_dir = Path(download_dir or ".").resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    safe_title = _safe_filename(title)
+    out_path = out_dir / f"{safe_title}.mkv"
+
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", url]
+    if subs_links:
+        for sub_url in subs_links:
+            if sub_url:
+                cmd.extend(["-i", sub_url])
+        # -map 0:v -map 0:a -map 1 -map 2 ... -c:v copy -c:a copy -c:s srt
+        cmd.extend(["-map", "0:v", "-map", "0:a"])
+        for i in range(1, len(subs_links) + 1):
+            cmd.extend(["-map", str(i)])
+        cmd.extend(["-c:v", "copy", "-c:a", "copy", "-c:s", "srt"])
+    else:
+        cmd.extend(["-c", "copy"])
+    cmd.append(str(out_path))
+
+    console.print(status_msg("Downloading to ") + str(out_path))
+    try:
+        subprocess.run(cmd, check=True)
+        ok_msg("Saved: " + str(out_path))
+    except FileNotFoundError:
+        err_msg("ffmpeg not found. Install ffmpeg to use -d/--download.")
+    except subprocess.CalledProcessError as e:
+        err_msg(f"Download failed (exit {e.returncode}).")
+
+
+def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: bool = False, download_dir: str = ""):
+    """Print stream URL (and subs/json), download, or launch mpv."""
+    url = data.get("url")
+    title = data.get("title", "")
+    subs = data.get("subs_links") or []
+    json_data = data.get("json_data")
+
+    if json_output and json_data is not None:
+        console.print_json(data=json_data)
+        return
+
+    if download and url:
+        _download_video(url, title, download_dir or config.get("download_dir") or ".", subs)
+        return
+
+    tmp = Path(os.environ.get("TMPDIR", os.environ.get("TEMP", "/tmp"))) / "nautilus_stream.txt"
+    if url:
+        tmp.write_text(url, encoding="utf-8")
+    stream_panel(url or "", str(tmp))
+    if link_only:
+        console.print("[dim bright_black]Copy with mouse → Ctrl+Shift+C. Press Enter to exit.[/]")
+        Prompt.ask("[dim bright_black]Press Enter to exit[/]", default="")
+        return
+    if url:
+        MediaPlayer.play(url, title, subs_links=subs if subs else None)
+
+
+
+
+async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_output: bool, query_from_args: str = "", download: bool = False, download_dir: str = ""):
+    """Search → select media → movie play or TV season/episode → play."""
+    recent = db.get_recent()
+    if recent:
+        console.print("[dim bright_black]Recent:[/] ", ", ".join(r[0] for r in recent))
+
+    query_str = (query_from_args or "").strip()
+    if not query_str:
+        query_str = prompt_text("Search")
+
+    with console.status(status_msg("Searching..."), spinner="dots"):
+        results = await scr.search(query_str)
+    if not results:
+        err_msg("No results found.")
+        return None
+
+    section_title("Search Results", "Pick one")
+    compact_list_results(results)
+    console.print()
+    choice = int(prompt_select("Select", [str(i + 1) for i in range(len(results))]))
+    selected = results[choice - 1]
+
+    if selected.type == "movie":
+        with console.status(status_msg("Loading stream...")):
+            data = await scr.get_movie_stream_data(selected)
+        if data:
+            db.save_history(selected.id, selected.title, "movie", position="00:00:00")
+            _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        else:
+            err_msg("Extraction failed.")
+        return None
+
+    # TV: seasons → episodes → play
+    with console.status(status_msg("Loading seasons...")):
+        seasons = await scr.get_seasons(selected.id)
+    if not seasons:
+        err_msg("Could not load seasons.")
+        return None
+
+    section_title(f"{selected.title}", "Seasons")
+    compact_list_simple(seasons, "label")
+    console.print()
+    s_choice = int(prompt_select("Select season", [str(i + 1) for i in range(len(seasons))]))
+    chosen_season = seasons[s_choice - 1]
+    season_id = chosen_season["id"]
+    season_num = chosen_season["number"]
+    season_title = chosen_season["label"]
+
+    with console.status(status_msg("Loading episodes...")):
+        episodes = await scr.get_episodes(season_id)
+    if not episodes:
+        err_msg("Could not load episodes.")
+        return None
+
+    section_title(f"{selected.title} · {chosen_season['label']}", f"{len(episodes)} episodes")
+    compact_list_simple([{"label": f"Episode {ep['number']}"} for ep in episodes], "label")
+    console.print()
+    e_choice = int(prompt_select("Select episode", [str(i + 1) for i in range(len(episodes))]))
+    chosen_ep = episodes[e_choice - 1]
+    episode_id = chosen_ep["id"]
+    episode_num = chosen_ep["number"]
+
+    with console.status(status_msg("Loading stream...")):
+        data = await scr.get_stream_url_for_episode(selected, episode_id, season_num, episode_num)
+
+    if not data:
+        err_msg("Extraction failed.")
+        return None
+
+    db.save_history(
+        selected.id,
+        selected.title,
+        "tv",
+        position="00:00:00",
+        season_id=season_id,
+        episode_id=episode_id,
+        season_title=season_title,
+        episode_title=f"Episode {episode_num}",
+        data_id=episode_id,
+    )
+    _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+
+    if link_only or json_output or download:
+        return None
+    return {
+        "media": selected,
+        "season_id": season_id,
+        "season_num": season_num,
+        "season_title": season_title,
+        "episode_id": episode_id,
+        "episode_num": episode_num,
+        "episode_title": f"Episode {episode_num}",
+        "episodes": episodes,
+        "seasons": seasons,
+        "data_id": episode_id,
+    }
+
+
+async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, json_output: bool, download: bool = False, download_dir: str = ""):
+    """Pick from history and resume (lobster --continue)."""
+    history = db.get_history_list(limit=20)
+    if not history:
+        warn_msg("No history. Search first.")
+        return None
+
+    section_title("Continue Watching", "Resume from history")
+    show_history_cards(history)
+    choice = int(prompt_select("Select entry", [str(i + 1) for i in range(len(history))]))
+    entry = history[choice - 1]
+    media_id = entry["media_id"]
+    title = entry["title"]
+    media_type = entry["media_type"]
+    position = entry.get("position") or "00:00:00"
+    season_id = entry.get("season_id") or ""
+    episode_id = entry.get("episode_id") or ""
+    season_title = entry.get("season_title") or ""
+    episode_title = entry.get("episode_title") or ""
+    data_id = entry.get("data_id") or ""
+
+    selected = MediaItem(title=title, id=media_id, type=media_type, url="")
+
+    if media_type == "movie":
+        with console.status("[dim bright_black]Resuming...[/]"):
+            data = await scr.get_movie_stream_data(selected)
+        if data:
+            if not link_only and not json_output and not download:
+                MediaPlayer.play(
+                    data["url"],
+                    data["title"],
+                    start=position if position != "00:00:00" else None,
+                    subs_links=data.get("subs_links") or None,
+                )
+            else:
+                _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        else:
+            console.print("[dim red]Extraction failed.[/]")
+        return None
+
+    # TV: resume same episode
+    with console.status("[dim bright_black]Resuming...[/]"):
+        data = await scr.get_stream_url_for_episode(
+            selected, data_id or episode_id, 0, 0
+        )
+    if not data:
+        console.print("[dim red]Extraction failed.[/]")
+        return None
+    # Fix title with S/E if we have season/episode in entry
+    if not data.get("title") or "S0E0" in data.get("title", ""):
+        data["title"] = f"{title} - {season_title} - {episode_title}"
+
+    if not link_only and not json_output and not download:
+        MediaPlayer.play(
+            data["url"],
+            data["title"],
+            start=position if position != "00:00:00" else None,
+            subs_links=data.get("subs_links") or None,
+        )
+    else:
+        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+    return None
+
+
+async def run():
+    args = parse_args()
+    _apply_cli_config(args)
+
+    if args.edit:
+        cfg_path = config.DEFAULT_CONFIG_PATH
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "nano"
+        os.system(f"{editor} {cfg_path}")
+        return
+
+    banner()
+
+    download = getattr(args, "download", None) is not None
+    download_dir = (args.download if args.download else (config.get("download_dir") or ".")) if download else ""
+
+    scr = FlixScraper()
+    db = Database()
+    try:
+        if args.continue_watch:
+            await run_continue_flow(scr, db, args.link, args.json, download, download_dir)
+        else:
+            query_str = " ".join(getattr(args, "query", []) or []).strip()
+            await run_search_flow(scr, db, args.link, args.json, query_str, download, download_dir)
+    finally:
+        await scr.close()
+
+
+def main():
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
