@@ -434,15 +434,12 @@ async def prompt_select_items(prompt_label: str, items: list, format_func, show_
     else:
         display_items = items
     
-    # Format items for display
+    # Format items for display - questionary needs plain strings
     display_choices = []
     for i, item in enumerate(display_items):
         if allow_back and i == 0:
-            # Format Go Back option
-            go_back_text = Text()
-            go_back_text.append("  ← ", style=MIST)
-            go_back_text.append("Go Back", style=TEXT_DIM)
-            display_choices.append(go_back_text)
+            # Format Go Back option as plain string
+            display_choices.append("  ← Go Back")
         else:
             actual_index = i if not allow_back else i
             actual_item = item
