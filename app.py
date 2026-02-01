@@ -17,6 +17,13 @@ from core.player import MediaPlayer
 from core.database import Database
 from models.media import MediaItem
 from utils.config import config
+from utils.validation import (
+    validate_search_query,
+    validate_download_path,
+    check_disk_space,
+    sanitize_filename,
+    validate_url,
+)
 from ui import (
     console,
     banner,
@@ -71,15 +78,40 @@ def _apply_cli_config(args):
 
 def _safe_filename(title: str) -> str:
     """Sanitize title for use as filename (lobster: tr -d ':/')."""
-    return "".join(c for c in title if c not in ":/\\*?\"<>|").strip() or "nautilus_download"
+    return sanitize_filename(title)
 
 
 def _download_video(url: str, title: str, download_dir: str, subs_links: list) -> None:
     """Download stream with ffmpeg (lobster-style). Optional subtitles burned in."""
+    # Validate URL
+    url_valid, url_error = validate_url(url)
+    if not url_valid:
+        err_msg(f"Invalid URL: {url_error}")
+        return
+
+    # Validate and prepare download directory
     out_dir = Path(download_dir or ".").resolve()
+    path_valid, path_error = validate_download_path(str(out_dir))
+    if not path_valid:
+        err_msg(f"Invalid download path: {path_error}")
+        return
+
+    # Check disk space (require at least 500MB)
+    has_space, space_warning = check_disk_space(str(out_dir), required_mb=500)
+    if not has_space:
+        err_msg(space_warning)
+        return
+    if space_warning:
+        warn_msg(space_warning)
+
     out_dir.mkdir(parents=True, exist_ok=True)
     safe_title = _safe_filename(title)
     out_path = out_dir / f"{safe_title}.mkv"
+
+    # Check if file already exists
+    if out_path.exists():
+        warn_msg(f"File already exists: {out_path.name}")
+        return
 
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", url]
     if subs_links:
@@ -287,6 +319,12 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
     query_str = (query_from_args or "").strip()
     if not query_str:
         query_str = await prompt_text("Search")
+
+    # Validate search query
+    query_valid, query_error = validate_search_query(query_str)
+    if not query_valid:
+        err_msg(query_error)
+        return None
 
     with console.status(status_msg("Searching..."), spinner="dots"):
         results = await scr.search(query_str)
