@@ -1,3 +1,4 @@
 rich
 httpx
 beautifulsoup4
+questionary

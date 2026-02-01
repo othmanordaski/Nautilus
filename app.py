@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from rich.prompt import Prompt, IntPrompt
+from rich.text import Text
 
 from core.scraper import FlixScraper
 from core.player import MediaPlayer
@@ -20,16 +21,15 @@ from ui import (
     console,
     banner,
     section_title,
-    compact_list_results,
-    compact_list_simple,
-    show_history_cards,
     stream_panel,
-    prompt_select,
+    prompt_select_items,
     prompt_text,
     status_msg,
     ok_msg,
     err_msg,
     warn_msg,
+    set_context,
+    clear_context,
 )
 
 
@@ -125,8 +125,11 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
         tmp.write_text(url, encoding="utf-8")
     stream_panel(url or "", str(tmp))
     if link_only:
-        console.print("[dim bright_black]Copy with mouse → Ctrl+Shift+C. Press Enter to exit.[/]")
-        Prompt.ask("[dim bright_black]Press Enter to exit[/]", default="")
+        info_text = Text()
+        info_text.append("Copy with mouse or Ctrl+Shift+C", style="grey50")
+        console.print()
+        console.print(info_text)
+        Prompt.ask("Press Enter to exit", default="")
         return
     if url:
         MediaPlayer.play(url, title, subs_links=subs if subs else None)
@@ -136,13 +139,19 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
 
 async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_output: bool, query_from_args: str = "", download: bool = False, download_dir: str = ""):
     """Search → select media → movie play or TV season/episode → play."""
+    clear_context()
+    
     recent = db.get_recent()
     if recent:
-        console.print("[dim bright_black]Recent:[/] ", ", ".join(r[0] for r in recent))
+        recent_text = Text()
+        recent_text.append("Recent: ", style="grey50")
+        recent_text.append(", ".join(r[0] for r in recent), style="grey70")
+        console.print()
+        console.print(recent_text)
 
     query_str = (query_from_args or "").strip()
     if not query_str:
-        query_str = prompt_text("Search")
+        query_str = await prompt_text("Search")
 
     with console.status(status_msg("Searching..."), spinner="dots"):
         results = await scr.search(query_str)
@@ -150,14 +159,21 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         err_msg("No results found.")
         return None
 
-    section_title("Search Results", "Pick one")
-    compact_list_results(results)
-    console.print()
-    choice = int(prompt_select("Select", [str(i + 1) for i in range(len(results))]))
-    selected = results[choice - 1]
+    section_title("Search Results")
+    # Compact selection - format function for display
+    def format_result(idx, item):
+        badge = "TV" if item.type == "tv" else "Movie"
+        return f"{idx}  {item.title}  · {badge}"
+    
+    _, selected = await prompt_select_items("Select", results, format_result)
+
+    # Clear console and show next step
+    console.clear()
+    banner()
+    set_context(selected.title)
 
     if selected.type == "movie":
-        with console.status(status_msg("Loading stream...")):
+        with console.status(status_msg("Loading stream..."), spinner="dots"):
             data = await scr.get_movie_stream_data(selected)
         if data:
             db.save_history(selected.id, selected.title, "movie", position="00:00:00")
@@ -167,32 +183,39 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         return None
 
     # TV: seasons → episodes → play
-    with console.status(status_msg("Loading seasons...")):
+    with console.status(status_msg("Loading seasons..."), spinner="dots"):
         seasons = await scr.get_seasons(selected.id)
     if not seasons:
         err_msg("Could not load seasons.")
         return None
 
-    section_title(f"{selected.title}", "Seasons")
-    compact_list_simple(seasons, "label")
-    console.print()
-    s_choice = int(prompt_select("Select season", [str(i + 1) for i in range(len(seasons))]))
-    chosen_season = seasons[s_choice - 1]
+    section_title(f"{selected.title}", f"Seasons", show_breadcrumb=True)
+    _, chosen_season = await prompt_select_items(
+        "Select season",
+        seasons,
+        lambda idx, s: f"{idx}  {s['label']}"
+    )
     season_id = chosen_season["id"]
     season_num = chosen_season["number"]
     season_title = chosen_season["label"]
 
-    with console.status(status_msg("Loading episodes...")):
+    # Clear and show next step
+    console.clear()
+    banner()
+    set_context(season_title)
+
+    with console.status(status_msg("Loading episodes..."), spinner="dots"):
         episodes = await scr.get_episodes(season_id)
     if not episodes:
         err_msg("Could not load episodes.")
         return None
 
-    section_title(f"{selected.title} · {chosen_season['label']}", f"{len(episodes)} episodes")
-    compact_list_simple([{"label": f"Episode {ep['number']}"} for ep in episodes], "label")
-    console.print()
-    e_choice = int(prompt_select("Select episode", [str(i + 1) for i in range(len(episodes))]))
-    chosen_ep = episodes[e_choice - 1]
+    section_title(f"{selected.title} · {chosen_season['label']}", f"{len(episodes)} episodes", show_breadcrumb=True)
+    _, chosen_ep = await prompt_select_items(
+        "Select episode",
+        episodes,
+        lambda idx, ep: f"{idx}  Episode {ep['number']}"
+    )
     episode_id = chosen_ep["id"]
     episode_num = chosen_ep["number"]
 
@@ -239,10 +262,30 @@ async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, jso
         warn_msg("No history. Search first.")
         return None
 
-    section_title("Continue Watching", "Resume from history")
-    show_history_cards(history)
-    choice = int(prompt_select("Select entry", [str(i + 1) for i in range(len(history))]))
-    entry = history[choice - 1]
+    section_title("Continue Watching")
+    # Compact selection for history
+    def format_history(idx, h):
+        title = h.get("title", "?")
+        typ = h.get("media_type", "movie")
+        prog = h.get("position", "00:00:00")
+        
+        if typ == "tv":
+            st = h.get("season_title") or ""
+            et = h.get("episode_title") or ""
+            if st and et:
+                prog = f"{st} · {et}"
+            elif st or et:
+                prog = st or et
+        
+        title_short = (title[:45] + "…") if len(title) > 45 else title
+        return f"{idx}  {title_short}  · {typ.upper()}  · {prog}"
+    
+    _, entry = await prompt_select_items("Select entry", history, format_history)
+    
+    # Clear and show loading
+    console.clear()
+    banner()
+    
     media_id = entry["media_id"]
     title = entry["title"]
     media_type = entry["media_type"]
@@ -256,7 +299,7 @@ async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, jso
     selected = MediaItem(title=title, id=media_id, type=media_type, url="")
 
     if media_type == "movie":
-        with console.status("[dim bright_black]Resuming...[/]"):
+        with console.status(status_msg("Resuming...")):
             data = await scr.get_movie_stream_data(selected)
         if data:
             if not link_only and not json_output and not download:
@@ -269,16 +312,16 @@ async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, jso
             else:
                 _show_and_maybe_play(data, link_only, json_output, download, download_dir)
         else:
-            console.print("[dim red]Extraction failed.[/]")
+            err_msg("Extraction failed.")
         return None
 
     # TV: resume same episode
-    with console.status("[dim bright_black]Resuming...[/]"):
+    with console.status(status_msg("Resuming...")):
         data = await scr.get_stream_url_for_episode(
             selected, data_id or episode_id, 0, 0
         )
     if not data:
-        console.print("[dim red]Extraction failed.[/]")
+        err_msg("Extraction failed.")
         return None
     # Fix title with S/E if we have season/episode in entry
     if not data.get("title") or "S0E0" in data.get("title", ""):
