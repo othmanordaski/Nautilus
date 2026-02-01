@@ -1,10 +1,14 @@
 """Lobster-style scraper: provider selection, decrypt API, subtitles, quality."""
 import re
 import httpx
+import asyncio
 from bs4 import BeautifulSoup
 from typing import List, Optional, Dict, Any
 from models.media import MediaItem
 from utils.config import config
+from rich.console import Console
+
+console = Console()
 
 
 class FlixScraper:
@@ -19,7 +23,56 @@ class FlixScraper:
         if self.subs_language.startswith("."):
             self.subs_language = self.subs_language[1:]
         headers = {"User-Agent": config.get("user_agent")}
-        self.client = httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=15.0)
+        self.client = httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=30.0)
+        self.max_retries = 3
+        self.retry_delay = 1.0  # seconds
+
+    async def _request_with_retry(self, method: str, url: str, **kwargs) -> Optional[httpx.Response]:
+        """Execute HTTP request with exponential backoff retry logic."""
+        for attempt in range(self.max_retries):
+            try:
+                if method == "GET":
+                    response = await self.client.get(url, **kwargs)
+                elif method == "POST":
+                    response = await self.client.post(url, **kwargs)
+                else:
+                    response = await self.client.request(method, url, **kwargs)
+                
+                response.raise_for_status()
+                return response
+                
+            except httpx.TimeoutException:
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2 ** attempt)
+                    console.print(f"[yellow]Request timeout. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    await asyncio.sleep(delay)
+                else:
+                    console.print(f"[red]Request timed out after {self.max_retries} attempts[/red]")
+                    return None
+                    
+            except httpx.HTTPStatusError as e:
+                if attempt < self.max_retries - 1 and e.response.status_code >= 500:
+                    delay = self.retry_delay * (2 ** attempt)
+                    console.print(f"[yellow]Server error ({e.response.status_code}). Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    await asyncio.sleep(delay)
+                else:
+                    console.print(f"[red]HTTP error {e.response.status_code}: {e.response.reason_phrase}[/red]")
+                    return None
+                    
+            except httpx.NetworkError:
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2 ** attempt)
+                    console.print(f"[yellow]Network error. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    await asyncio.sleep(delay)
+                else:
+                    console.print(f"[red]Network error: Unable to connect after {self.max_retries} attempts[/red]")
+                    return None
+                    
+            except Exception as e:
+                console.print(f"[red]Unexpected error: {type(e).__name__}: {e}[/red]")
+                return None
+        
+        return None
 
     async def close(self):
         await self.client.aclose()
@@ -29,39 +82,55 @@ class FlixScraper:
         if slug.startswith("-"):
             slug = slug[1:]
         url = f"{self.base_url}/search/{slug}"
-        resp = await self.client.get(url)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        results = []
-        for item in soup.select(".flw-item"):
-            link = item.select_one(".film-name a")
-            if not link:
-                continue
-            href = link.get("href", "")
-            title = link.get_text(strip=True)
-            mid = href.split("-")[-1] if "-" in href else ""
-            kind = "tv" if "/tv/" in href else "movie"
-            results.append(MediaItem(title=title, id=mid, type=kind, url=href))
-        return results
+        
+        resp = await self._request_with_retry("GET", url)
+        if not resp:
+            return []
+        
+        try:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            results = []
+            for item in soup.select(".flw-item"):
+                link = item.select_one(".film-name a")
+                if not link:
+                    continue
+                href = link.get("href", "")
+                title = link.get_text(strip=True)
+                mid = href.split("-")[-1] if "-" in href else ""
+                kind = "tv" if "/tv/" in href else "movie"
+                results.append(MediaItem(title=title, id=mid, type=kind, url=href))
+            return results
+        except Exception as e:
+            console.print(f"[red]Failed to parse search results: {e}[/red]")
+            return []
 
     async def get_seasons(self, media_id: str) -> List[Dict[str, Any]]:
         try:
-            resp = await self.client.get(f"{self.base_url}/ajax/v2/tv/seasons/{media_id}")
+            resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/v2/tv/seasons/{media_id}")
+            if not resp:
+                return []
+            
             soup = BeautifulSoup(resp.text, "html.parser")
             items = soup.select(".dropdown-item[data-id]")
             return [
                 {"id": el["data-id"], "number": i + 1, "label": el.get_text(strip=True) or f"Season {i + 1}"}
                 for i, el in enumerate(items)
             ]
-        except Exception:
+        except Exception as e:
+            console.print(f"[red]Failed to load seasons: {e}[/red]")
             return []
 
     async def get_episodes(self, season_id: str) -> List[Dict[str, Any]]:
         try:
-            resp = await self.client.get(f"{self.base_url}/ajax/v2/season/episodes/{season_id}")
+            resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/v2/season/episodes/{season_id}")
+            if not resp:
+                return []
+            
             soup = BeautifulSoup(resp.text, "html.parser")
             items = soup.select(".nav-item a[data-id]")
             return [{"id": el["data-id"], "number": i + 1} for i, el in enumerate(items)]
-        except Exception:
+        except Exception as e:
+            console.print(f"[red]Failed to load episodes: {e}[/red]")
             return []
 
     def _pick_server_id(self, html: str) -> Optional[str]:
@@ -77,17 +146,23 @@ class FlixScraper:
     async def _get_embed_link(self, episode_id: str) -> Optional[str]:
         """Get embed URL from ajax/episode/sources/{episode_id}."""
         try:
-            resp = await self.client.get(f"{self.base_url}/ajax/episode/sources/{episode_id}")
+            resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/episode/sources/{episode_id}")
+            if not resp:
+                return None
             return resp.json().get("link")
-        except Exception:
+        except Exception as e:
+            console.print(f"[red]Failed to get embed link: {e}[/red]")
             return None
 
     async def _extract_from_embed(self, embed_url: str) -> Dict[str, Any]:
         """Lobster extract_from_embed: call decrypt API, get video + subs. Returns dict with file, subs, full json."""
         out = {"file": None, "subs": [], "json": None}
         try:
-            dec = await self.client.get(f"{self.decrypt_api}/?url={embed_url}")
-            data = dec.json()
+            resp = await self._request_with_retry("GET", f"{self.decrypt_api}/?url={embed_url}")
+            if not resp:
+                return out
+            
+            data = resp.json()
             out["json"] = data
             sources = data.get("sources") or []
             if sources:
@@ -99,7 +174,8 @@ class FlixScraper:
                 if self.subs_language in label and t.get("file"):
                     out["subs"].append(t["file"])
             return out
-        except Exception:
+        except Exception as e:
+            console.print(f"[red]Failed to decrypt stream: {e}[/red]")
             return out
 
     def _apply_quality(self, url: str) -> str:
@@ -125,7 +201,10 @@ class FlixScraper:
         try:
             if is_movie:
                 # Movie: ajax/movie/episodes -> pick link with provider title -> get episode id from href
-                resp = await self.client.get(f"{self.base_url}/ajax/movie/episodes/{media.id}")
+                resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/movie/episodes/{media.id}")
+                if not resp:
+                    return None
+                
                 soup = BeautifulSoup(resp.text, "html.parser")
                 episode_id = None
                 for a in soup.select("a[data-link][title]"):
@@ -144,24 +223,35 @@ class FlixScraper:
                         if m:
                             episode_id = m.group(2)
                 if not episode_id:
+                    console.print(f"[red]Could not find episode ID for {media.title}[/red]")
                     return None
                 display_title = media.title
             else:
                 if not episode_server_id:
                     return None
                 # TV: episode/servers page -> pick server by provider -> get sources
-                srv_resp = await self.client.get(f"{self.base_url}/ajax/v2/episode/servers/{episode_server_id}")
+                srv_resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/v2/episode/servers/{episode_server_id}")
+                if not srv_resp:
+                    return None
+                
                 server_id = self._pick_server_id(srv_resp.text)
                 if not server_id:
+                    console.print(f"[red]Could not find server for provider: {self.provider}[/red]")
                     return None
-                src_resp = await self.client.get(f"{self.base_url}/ajax/episode/sources/{server_id}")
+                
+                src_resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/episode/sources/{server_id}")
+                if not src_resp:
+                    return None
+                
                 embed_url = src_resp.json().get("link") if src_resp.json() else None
                 if not embed_url:
+                    console.print(f"[red]Could not get embed URL[/red]")
                     return None
                 display_title = f"{media.title} - S{season_num}E{episode_num}"
                 ext = await self._extract_from_embed(embed_url)
                 url = ext.get("file")
                 if not url:
+                    console.print(f"[red]Failed to extract video URL[/red]")
                     return None
                 url = self._apply_quality(url)
                 subs = [] if config.get("no_subs") else ext.get("subs") or []
@@ -174,10 +264,12 @@ class FlixScraper:
             # Movie path: get embed from episode_id
             embed_url = await self._get_embed_link(episode_id)
             if not embed_url:
+                console.print(f"[red]Could not get embed link for {media.title}[/red]")
                 return None
             ext = await self._extract_from_embed(embed_url)
             url = ext.get("file")
             if not url:
+                console.print(f"[red]Failed to extract video URL for {media.title}[/red]")
                 return None
             url = self._apply_quality(url)
             subs = [] if config.get("no_subs") else (ext.get("subs") or [])
@@ -187,7 +279,8 @@ class FlixScraper:
                 "subs_links": subs,
                 "json_data": ext.get("json"),
             }
-        except Exception:
+        except Exception as e:
+            console.print(f"[red]Error getting stream data: {type(e).__name__}: {e}[/red]")
             return None
 
     async def get_stream_url(self, media: MediaItem, s: int = 1, e: int = 1) -> Optional[Dict]:
