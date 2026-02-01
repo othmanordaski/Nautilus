@@ -135,6 +135,138 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
         MediaPlayer.play(url, title, subs_links=subs if subs else None)
 
 
+async def _handle_next_episode(scr, db, selected, seasons, episodes, current_season_num, current_episode_num, season_id, season_title, link_only, json_output, download, download_dir):
+    """Handle 'Next Episode' prompt after watching an episode."""
+    import questionary
+    
+    # Check if there's a next episode
+    current_ep_index = current_episode_num - 1
+    has_next_in_season = current_ep_index + 1 < len(episodes)
+    has_next_season = current_season_num < len(seasons)
+    
+    if not has_next_in_season and not has_next_season:
+        console.print()
+        ok_msg(f"You've finished {selected.title}! 🎉")
+        return None
+    
+    # Prompt for next episode
+    console.print()
+    console.print()
+    
+    choices = []
+    if has_next_in_season:
+        next_ep_num = current_episode_num + 1
+        choices.append(f"→ Play Next Episode ({next_ep_num})")
+    if has_next_season:
+        choices.append(f"→ Next Season (Season {current_season_num + 1})")
+    choices.append("✓ Exit")
+    
+    selection = await questionary.select(
+        "Continue watching?",
+        choices=choices,
+        style=questionary.Style([
+            ('qmark', 'fg:#5c6bc0'),
+            ('question', 'fg:#b3b3b3'),
+            ('pointer', 'fg:#5c6bc0 bold'),
+            ('highlighted', 'fg:#5c6bc0 bold'),
+            ('selected', 'fg:#5c6bc0'),
+            ('answer', 'fg:#5c6bc0 bold'),
+            ('text', 'fg:#b3b3b3'),
+        ])
+    ).ask_async()
+    
+    if not selection or "Exit" in selection:
+        return None
+    
+    # Clear screen for next episode
+    console.clear()
+    banner()
+    set_context(selected.title)
+    
+    if "Next Episode" in selection:
+        # Play next episode in same season
+        next_ep = episodes[current_ep_index + 1]
+        next_episode_id = next_ep["id"]
+        next_episode_num = next_ep["number"]
+        
+        with console.status(status_msg("Loading next episode..."), spinner="dots"):
+            data = await scr.get_stream_url_for_episode(selected, next_episode_id, current_season_num, next_episode_num)
+        
+        if not data:
+            err_msg("Extraction failed.")
+            return None
+        
+        db.save_history(
+            selected.id,
+            selected.title,
+            "tv",
+            position="00:00:00",
+            season_id=season_id,
+            episode_id=next_episode_id,
+            season_title=season_title,
+            episode_title=f"Episode {next_episode_num}",
+            data_id=next_episode_id,
+        )
+        
+        section_title(f"{selected.title} · {season_title}", f"Episode {next_episode_num}")
+        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        
+        if link_only or json_output or download:
+            return None
+        
+        # Recursive call for next episode
+        return await _handle_next_episode(scr, db, selected, seasons, episodes, current_season_num, next_episode_num, season_id, season_title, link_only, json_output, download, download_dir)
+    
+    elif "Next Season" in selection:
+        # Load next season
+        next_season = seasons[current_season_num]
+        next_season_id = next_season["id"]
+        next_season_num = current_season_num + 1
+        next_season_title = next_season["label"]
+        
+        set_context(next_season_title)
+        
+        with console.status(status_msg("Loading episodes..."), spinner="dots"):
+            next_episodes = await scr.get_episodes(next_season_id)
+        
+        if not next_episodes:
+            err_msg("Could not load episodes.")
+            return None
+        
+        # Play first episode of next season
+        first_ep = next_episodes[0]
+        first_episode_id = first_ep["id"]
+        first_episode_num = first_ep["number"]
+        
+        with console.status(status_msg("Loading stream..."), spinner="dots"):
+            data = await scr.get_stream_url_for_episode(selected, first_episode_id, next_season_num, first_episode_num)
+        
+        if not data:
+            err_msg("Extraction failed.")
+            return None
+        
+        db.save_history(
+            selected.id,
+            selected.title,
+            "tv",
+            position="00:00:00",
+            season_id=next_season_id,
+            episode_id=first_episode_id,
+            season_title=next_season_title,
+            episode_title=f"Episode {first_episode_num}",
+            data_id=first_episode_id,
+        )
+        
+        section_title(f"{selected.title} · {next_season_title}", f"Episode {first_episode_num}")
+        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        
+        if link_only or json_output or download:
+            return None
+        
+        # Recursive call for next season's episodes
+        return await _handle_next_episode(scr, db, selected, seasons, next_episodes, next_season_num, first_episode_num, next_season_id, next_season_title, link_only, json_output, download, download_dir)
+    
+    return None
 
 
 async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_output: bool, query_from_args: str = "", download: bool = False, download_dir: str = ""):
@@ -241,18 +373,9 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
 
     if link_only or json_output or download:
         return None
-    return {
-        "media": selected,
-        "season_id": season_id,
-        "season_num": season_num,
-        "season_title": season_title,
-        "episode_id": episode_id,
-        "episode_num": episode_num,
-        "episode_title": f"Episode {episode_num}",
-        "episodes": episodes,
-        "seasons": seasons,
-        "data_id": episode_id,
-    }
+    
+    # Next Episode feature - ask if user wants to continue watching
+    return await _handle_next_episode(scr, db, selected, seasons, episodes, season_num, episode_num, season_id, season_title, link_only, json_output, download, download_dir)
 
 
 async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, json_output: bool, download: bool = False, download_dir: str = ""):
