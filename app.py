@@ -132,7 +132,8 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
         Prompt.ask("Press Enter to exit", default="")
         return
     if url:
-        MediaPlayer.play(url, title, subs_links=subs if subs else None)
+        final_position = MediaPlayer.play(url, title, subs_links=subs if subs else None)
+        return final_position
 
 
 async def _handle_next_episode(scr, db, selected, seasons, episodes, current_season_num, current_episode_num, season_id, season_title, link_only, json_output, download, download_dir):
@@ -196,20 +197,21 @@ async def _handle_next_episode(scr, db, selected, seasons, episodes, current_sea
             err_msg("Extraction failed.")
             return None
         
+        section_title(f"{selected.title} · {season_title}", f"Episode {next_episode_num}")
+        final_position = _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        
+        # Save history with actual position
         db.save_history(
             selected.id,
             selected.title,
             "tv",
-            position="00:00:00",
+            position=final_position or "00:00:00",
             season_id=season_id,
             episode_id=next_episode_id,
             season_title=season_title,
             episode_title=f"Episode {next_episode_num}",
             data_id=next_episode_id,
         )
-        
-        section_title(f"{selected.title} · {season_title}", f"Episode {next_episode_num}")
-        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
         
         if link_only or json_output or download:
             return None
@@ -245,20 +247,21 @@ async def _handle_next_episode(scr, db, selected, seasons, episodes, current_sea
             err_msg("Extraction failed.")
             return None
         
+        section_title(f"{selected.title} · {next_season_title}", f"Episode {first_episode_num}")
+        final_position = _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        
+        # Save history with actual position
         db.save_history(
             selected.id,
             selected.title,
             "tv",
-            position="00:00:00",
+            position=final_position or "00:00:00",
             season_id=next_season_id,
             episode_id=first_episode_id,
             season_title=next_season_title,
             episode_title=f"Episode {first_episode_num}",
             data_id=first_episode_id,
         )
-        
-        section_title(f"{selected.title} · {next_season_title}", f"Episode {first_episode_num}")
-        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
         
         if link_only or json_output or download:
             return None
@@ -308,8 +311,15 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         with console.status(status_msg("Loading stream..."), spinner="dots"):
             data = await scr.get_movie_stream_data(selected)
         if data:
-            db.save_history(selected.id, selected.title, "movie", position="00:00:00")
-            _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+            if not link_only and not json_output and not download:
+                # Play and get final position
+                final_position = _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+                # Save history with actual position
+                db.save_history(selected.id, selected.title, "movie", position=final_position or "00:00:00")
+            else:
+                # Just show link/json/download without playing
+                db.save_history(selected.id, selected.title, "movie", position="00:00:00")
+                _show_and_maybe_play(data, link_only, json_output, download, download_dir)
         else:
             err_msg("Extraction failed.")
         return None
@@ -358,21 +368,37 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         err_msg("Extraction failed.")
         return None
 
+    if link_only or json_output or download:
+        # Save with 00:00:00 since we're not actually playing
+        db.save_history(
+            selected.id,
+            selected.title,
+            "tv",
+            position="00:00:00",
+            season_id=season_id,
+            episode_id=episode_id,
+            season_title=season_title,
+            episode_title=f"Episode {episode_num}",
+            data_id=episode_id,
+        )
+        _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+        return None
+    
+    # Play and get final position
+    final_position = _show_and_maybe_play(data, link_only, json_output, download, download_dir)
+    
+    # Save history with actual position
     db.save_history(
         selected.id,
         selected.title,
         "tv",
-        position="00:00:00",
+        position=final_position or "00:00:00",
         season_id=season_id,
         episode_id=episode_id,
         season_title=season_title,
         episode_title=f"Episode {episode_num}",
         data_id=episode_id,
     )
-    _show_and_maybe_play(data, link_only, json_output, download, download_dir)
-
-    if link_only or json_output or download:
-        return None
     
     # Next Episode feature - ask if user wants to continue watching
     return await _handle_next_episode(scr, db, selected, seasons, episodes, season_num, episode_num, season_id, season_title, link_only, json_output, download, download_dir)
@@ -426,12 +452,14 @@ async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, jso
             data = await scr.get_movie_stream_data(selected)
         if data:
             if not link_only and not json_output and not download:
-                MediaPlayer.play(
+                final_position = MediaPlayer.play(
                     data["url"],
                     data["title"],
                     start=position if position != "00:00:00" else None,
                     subs_links=data.get("subs_links") or None,
                 )
+                # Update history with new position
+                db.save_history(media_id, title, media_type, position=final_position or "00:00:00")
             else:
                 _show_and_maybe_play(data, link_only, json_output, download, download_dir)
         else:
@@ -451,11 +479,23 @@ async def run_continue_flow(scr: FlixScraper, db: Database, link_only: bool, jso
         data["title"] = f"{title} - {season_title} - {episode_title}"
 
     if not link_only and not json_output and not download:
-        MediaPlayer.play(
+        final_position = MediaPlayer.play(
             data["url"],
             data["title"],
             start=position if position != "00:00:00" else None,
             subs_links=data.get("subs_links") or None,
+        )
+        # Update history with new position
+        db.save_history(
+            media_id,
+            title,
+            media_type,
+            position=final_position or "00:00:00",
+            season_id=season_id,
+            episode_id=episode_id,
+            season_title=season_title,
+            episode_title=episode_title,
+            data_id=data_id,
         )
     else:
         _show_and_maybe_play(data, link_only, json_output, download, download_dir)
