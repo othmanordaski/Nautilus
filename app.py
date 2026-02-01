@@ -113,7 +113,7 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
         warn_msg(f"File already exists: {out_path.name}")
         return
 
-    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", url]
+    cmd = ["ffmpeg", "-y", "-progress", "pipe:1", "-i", url]
     if subs_links:
         for sub_url in subs_links:
             if sub_url:
@@ -128,8 +128,66 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
     cmd.append(str(out_path))
 
     console.print(status_msg("Downloading to ") + str(out_path))
+    console.print()
+    
     try:
-        subprocess.run(cmd, check=True)
+        from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("[cyan]Downloading...", total=None)
+            
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            duration = None
+            current_time = 0
+            
+            # Read progress output
+            for line in process.stdout:
+                line = line.strip()
+                
+                # Parse duration (total length of video)
+                if line.startswith("out_time_ms="):
+                    try:
+                        time_ms = int(line.split("=")[1])
+                        current_time = time_ms / 1000000  # Convert to seconds
+                        
+                        if duration and duration > 0:
+                            percentage = (current_time / duration) * 100
+                            progress.update(task, completed=percentage, total=100)
+                    except (ValueError, IndexError):
+                        pass
+                
+                # Parse total duration
+                elif line.startswith("duration="):
+                    try:
+                        duration_str = line.split("=")[1]
+                        duration = float(duration_str)
+                        progress.update(task, total=100)
+                    except (ValueError, IndexError):
+                        pass
+            
+            process.wait()
+            
+            if process.returncode != 0:
+                stderr = process.stderr.read()
+                raise subprocess.CalledProcessError(process.returncode, cmd, stderr=stderr)
+            
+            progress.update(task, completed=100)
+        
+        console.print()
         ok_msg("Saved: " + str(out_path))
     except FileNotFoundError:
         err_msg("ffmpeg not found. Install ffmpeg to use -d/--download.")
