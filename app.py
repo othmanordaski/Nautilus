@@ -338,7 +338,9 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         badge = "TV" if item.type == "tv" else "Movie"
         return f"{idx}  {item.title}  · {badge}"
     
-    _, selected = await prompt_select_items("Select", results, format_result)
+    _, selected = await prompt_select_items("Select", results, format_result, allow_back=False)
+    if selected is None:  # This shouldn't happen on first screen, but handle it
+        return None
 
     # Clear console and show next step
     console.clear()
@@ -363,41 +365,58 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
         return None
 
     # TV: seasons → episodes → play
-    with console.status(status_msg("Loading seasons..."), spinner="dots"):
-        seasons = await scr.get_seasons(selected.id)
-    if not seasons:
-        err_msg("Could not load seasons.")
-        return None
+    while True:  # Loop to allow going back
+        with console.status(status_msg("Loading seasons..."), spinner="dots"):
+            seasons = await scr.get_seasons(selected.id)
+        if not seasons:
+            err_msg("Could not load seasons.")
+            return None
 
-    section_title(f"{selected.title}", f"Seasons", show_breadcrumb=True)
-    _, chosen_season = await prompt_select_items(
-        "Select season",
-        seasons,
-        lambda idx, s: f"{idx}  {s['label']}"
-    )
-    season_id = chosen_season["id"]
-    season_num = chosen_season["number"]
-    season_title = chosen_season["label"]
+        section_title(f"{selected.title}", f"Seasons", show_breadcrumb=True)
+        _, chosen_season = await prompt_select_items(
+            "Select season",
+            seasons,
+            lambda idx, s: f"{idx}  {s['label']}",
+            allow_back=True
+        )
+        
+        # If user selected Go Back, return to search results
+        if chosen_season is None:
+            return await run_search_flow(scr, db, link_only, json_output, query_str, download, download_dir)
+        
+        season_id = chosen_season["id"]
+        season_num = chosen_season["number"]
+        season_title = chosen_season["label"]
 
-    # Clear and show next step
-    console.clear()
-    banner()
-    set_context(season_title)
+        # Clear and show next step
+        console.clear()
+        banner()
+        set_context(season_title)
 
-    with console.status(status_msg("Loading episodes..."), spinner="dots"):
-        episodes = await scr.get_episodes(season_id)
-    if not episodes:
-        err_msg("Could not load episodes.")
-        return None
+        with console.status(status_msg("Loading episodes..."), spinner="dots"):
+            episodes = await scr.get_episodes(season_id)
+        if not episodes:
+            err_msg("Could not load episodes.")
+            continue  # Go back to season selection
 
-    section_title(f"{selected.title} · {chosen_season['label']}", f"{len(episodes)} episodes", show_breadcrumb=True)
-    _, chosen_ep = await prompt_select_items(
-        "Select episode",
-        episodes,
-        lambda idx, ep: f"{idx}  Episode {ep['number']}"
-    )
-    episode_id = chosen_ep["id"]
-    episode_num = chosen_ep["number"]
+        section_title(f"{selected.title} · {chosen_season['label']}", f"{len(episodes)} episodes", show_breadcrumb=True)
+        _, chosen_ep = await prompt_select_items(
+            "Select episode",
+            episodes,
+            lambda idx, ep: f"{idx}  Episode {ep['number']}",
+            allow_back=True
+        )
+        
+        # If user selected Go Back, loop back to season selection
+        if chosen_ep is None:
+            console.clear()
+            banner()
+            set_context(selected.title)
+            continue
+        
+        episode_id = chosen_ep["id"]
+        episode_num = chosen_ep["number"]
+        break  # Exit the while loop and continue with playback
 
     with console.status(status_msg("Loading stream...")):
         data = await scr.get_stream_url_for_episode(selected, episode_id, season_num, episode_num)

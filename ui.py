@@ -420,14 +420,33 @@ async def prompt_select(prompt_label: str, choices: list) -> str:
     return int(selection) if is_numeric else selection
 
 
-async def prompt_select_items(prompt_label: str, items: list, format_func, show_help: bool = True) -> tuple:
+async def prompt_select_items(prompt_label: str, items: list, format_func, show_help: bool = True, allow_back: bool = False) -> tuple:
     """
     Arrow key selection for items (results, seasons, episodes)
-    Returns (index, selected_item)
+    Returns (index, selected_item) or (None, None) if user selects Go Back
     format_func: function to format item for display
+    allow_back: whether to show "← Go Back" option
     """
+    # Add Go Back option at the beginning if requested
+    if allow_back:
+        go_back_marker = "___GO_BACK___"
+        display_items = [go_back_marker] + items
+    else:
+        display_items = items
+    
     # Format items for display
-    display_choices = [format_func(i, item) for i, item in enumerate(items, 1)]
+    display_choices = []
+    for i, item in enumerate(display_items):
+        if allow_back and i == 0:
+            # Format Go Back option
+            go_back_text = Text()
+            go_back_text.append("  ← ", style=MIST)
+            go_back_text.append("Go Back", style=TEXT_DIM)
+            display_choices.append(go_back_text)
+        else:
+            actual_index = i if not allow_back else i
+            actual_item = item
+            display_choices.append(format_func(actual_index, actual_item))
     
     # Show keyboard help hint
     if show_help:
@@ -456,7 +475,14 @@ async def prompt_select_items(prompt_label: str, items: list, format_func, show_
     
     # Find which item was selected
     selected_index = display_choices.index(selection)
-    return selected_index, items[selected_index]
+    
+    # Check if Go Back was selected
+    if allow_back and selected_index == 0:
+        return None, None
+    
+    # Adjust index for Go Back offset
+    actual_index = selected_index if not allow_back else selected_index - 1
+    return actual_index, items[actual_index]
 
 
 async def prompt_text(prompt_label: str) -> str:
