@@ -6,6 +6,29 @@ from typing import Optional, Tuple
 from urllib.parse import urlparse
 
 
+def check_dependency(command: str) -> Tuple[bool, Optional[str]]:
+    """
+    Check if a command-line dependency is available.
+    
+    Args:
+        command: The command to check (e.g., 'mpv', 'ffmpeg', 'yt-dlp')
+    
+    Returns:
+        (is_available, path_or_error)
+    """
+    path = shutil.which(command)
+    if path:
+        return True, path
+    
+    # Check for .exe variant on Windows
+    if not path:
+        exe_path = shutil.which(f"{command}.exe")
+        if exe_path:
+            return True, exe_path
+    
+    return False, f"{command} not found in PATH"
+
+
 def validate_search_query(query: str) -> Tuple[bool, Optional[str]]:
     """
     Validate search query string.

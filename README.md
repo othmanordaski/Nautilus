@@ -123,20 +123,20 @@ python app.py -p UpCloud -q 720 -n  # Provider, quality, no subs
 
 ## 🛠️ Configuration
 
-Edit `nautilus_config.json` or use `python app.py -e`:
+Edit `~/.config/nautilus/config.yaml` (or `%APPDATA%\nautilus\config.yaml` on Windows) or use `python app.py -e`:
 
-```json
-{
-  "base_url": "https://flixhq.to",
-  "decrypt_api": "https://dec.eatmynerds.live",
-  "player": "mpv",
-  "provider": "Vidcloud",
-  "quality": "1080",
-  "subs_language": "english",
-  "history_db": "nautilus.db",
-  "watchlater_dir": "/tmp/nautilus_watchlater",
-  "download_dir": "."
-}
+```yaml
+base_url: "https://flixhq.to"
+decrypt_api: "https://dec.eatmynerds.live"
+player: "mpv"
+provider: "Vidcloud"
+quality: "1080"
+subs_language: "english"
+history_db: "nautilus.db"
+watchlater_dir: "/tmp/nautilus_watchlater"
+download_dir: "."
+user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+no_subs: false
 ```
 
 ## 📋 Command Line Options

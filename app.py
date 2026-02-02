@@ -24,6 +24,7 @@ from utils.validation import (
     check_disk_space,
     sanitize_filename,
     validate_url,
+    check_dependency,
 )
 from ui import (
     console,
@@ -84,6 +85,14 @@ def _safe_filename(title: str) -> str:
 
 def _download_video(url: str, title: str, download_dir: str, subs_links: list) -> None:
     """Download stream with yt-dlp (faster) or ffmpeg fallback. Optional subtitles."""
+    # Check for required dependencies
+    has_ytdlp, _ = check_dependency("yt-dlp")
+    has_ffmpeg, ffmpeg_err = check_dependency("ffmpeg")
+    
+    if not has_ytdlp and not has_ffmpeg:
+        err_msg("Neither yt-dlp nor ffmpeg found. Install at least one to download videos.")
+        return
+    
     # Validate URL
     url_valid, url_error = validate_url(url)
     if not url_valid:
@@ -118,9 +127,9 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
     console.print()
     
     # Try yt-dlp first (much faster for HLS/m3u8 streams)
-    ytdlp_available = shutil.which("yt-dlp") is not None
+    # But skip if subtitles need embedding - ffmpeg handles that better
     
-    if ytdlp_available and ".m3u8" in url:
+    if has_ytdlp and ".m3u8" in url and not subs_links:
         try:
             cmd = [
                 "yt-dlp",
@@ -188,10 +197,6 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
         if out_path.exists():
             out_path.unlink()
             console.print(f"[yellow]Removed partial file: {out_path.name}[/yellow]")
-    except FileNotFoundError:
-        err_msg("ffmpeg not found. Install ffmpeg to use -d/--download.")
-    except subprocess.CalledProcessError as e:
-        err_msg(f"Download failed (exit {e.returncode}).")
 
 
 def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: bool = False, download_dir: str = ""):
@@ -221,6 +226,13 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
         Prompt.ask("Press Enter to exit", default="")
         return
     if url:
+        # Check for mpv before attempting to play
+        has_mpv, mpv_err = check_dependency(config.get("player") or "mpv")
+        if not has_mpv:
+            err_msg(f"Player not found: {mpv_err}")
+            err_msg("Install mpv or configure a different player in config")
+            return None
+        
         final_position = MediaPlayer.play(url, title, subs_links=subs if subs else None)
         return final_position
 
