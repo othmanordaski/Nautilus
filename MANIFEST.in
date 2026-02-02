@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include requirements.txt
+include TEST_SCENARIOS.md
+include install.sh
+include install.bat
+recursive-include core *.py
+recursive-include models *.py
+recursive-include utils *.py
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store

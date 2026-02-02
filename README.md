@@ -39,61 +39,135 @@ Nautilus embodies the principles of **和 (wa - harmony)**:
 
 ### Prerequisites
 
-- **Python 3.13+**
+- **Python 3.8+**
 - **mpv player** (for playback)
 - **ffmpeg** (optional, for downloads)
+- **yt-dlp** (optional, for 5-10x faster downloads)
+- **aria2c** (optional, for parallel downloads)
 
 ### Installation
+
+#### Method 1: Automated Install (Recommended)
+
+**Linux/macOS:**
+```bash
+git clone https://github.com/othmanordaski/Nautilus.git
+cd Nautilus
+chmod +x install.sh
+./install.sh
+```
+
+**Windows:**
+```powershell
+git clone https://github.com/othmanordaski/Nautilus.git
+cd Nautilus
+.\install.bat
+```
+
+#### Method 2: pip Install (System-wide)
+
+```bash
+git clone https://github.com/othmanordaski/Nautilus.git
+cd Nautilus
+pip install -e .
+```
+
+#### Method 3: Manual Install
 
 ```bash
 # Clone the repository
 git clone https://github.com/othmanordaski/Nautilus.git
 cd Nautilus
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
 # Install dependencies
 pip install -r requirements.txt
 
-# Run Nautilus
+# Run directly
 python app.py
+```
+
+### Install Optional Tools (Highly Recommended)
+
+**Linux/Ubuntu:**
+```bash
+# mpv (required)
+sudo apt install mpv
+
+# Download tools (optional but recommended)
+pip install yt-dlp
+sudo apt install ffmpeg aria2
+```
+
+**macOS:**
+```bash
+brew install mpv ffmpeg aria2
+pip install yt-dlp
+```
+
+**Windows:**
+```powershell
+# Using winget
+winget install mpv.mpv
+winget install Gyan.FFmpeg
+winget install aria2.aria2
+pip install yt-dlp
 ```
 
 ## 📖 Usage
 
-### Basic Search
+### After Installation
+
+```bash
+# Interactive search
+nautilus
+
+# Direct search
+nautilus "Breaking Bad"
+
+# Continue watching
+nautilus -c
+
+# Download mode
+nautilus -d
+```
+
+### Without Installation (Direct Run)
+
 ```bash
 python app.py
+```
+
+### Basic Search
+```bash
+nautilus
 # Follow the prompts: Search → Select → Watch
 ```
 
 ### With Query
 ```bash
-python app.py dexter
+nautilus "The Sopranos"
 ```
 
 ### Continue Watching
 ```bash
-python app.py -c
+nautilus -c
 ```
 
 ### Get Stream Link Only
 ```bash
-python app.py -l
+nautilus -l "True Detective"
 ```
 
 ### Download Video
 ```bash
-python app.py -d
+nautilus -d "Peaky Blinders"
 # Or specify path
-python app.py -d ~/Downloads
+nautilus -d ~/Downloads "The Wire"
 ```
 
 ### Advanced Options
 ```bash
-python app.py -p UpCloud -q 720 -n  # Provider, quality, no subs
+nautilus -p UpCloud -q 720 -n  # Provider, quality, no subs
 ```
 
 ## 🎮 Controls
