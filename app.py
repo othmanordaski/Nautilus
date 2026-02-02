@@ -126,10 +126,9 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
     console.print(status_msg("Downloading to ") + str(out_path))
     console.print()
     
-    # Try yt-dlp first (much faster for HLS/m3u8 streams)
-    # But skip if subtitles need embedding - ffmpeg handles that better
-    
-    if has_ytdlp and ".m3u8" in url and not subs_links:
+    # Always try yt-dlp first (5-10x faster than ffmpeg, especially with aria2c)
+    if has_ytdlp:
+        temp_out = out_path if not subs_links else out_path.with_suffix('.temp.mkv')
         try:
             cmd = [
                 "yt-dlp",
@@ -137,7 +136,7 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
                 "--progress",
                 "--console-title",
                 "-f", "best",
-                "-o", str(out_path),
+                "-o", str(temp_out),
             ]
             
             # Add aria2c for parallel downloads if available (5x-10x faster)
@@ -147,56 +146,75 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
                     "--downloader-args", "aria2c:-x 16 -s 16 -k 1M --console-log-level=warn --summary-interval=0"
                 ])
             
-            # Add concurrent fragments for speed (cleaner output without --newline)
+            # Add concurrent fragments for speed
             cmd.extend(["-N", "8"])  # 8 parallel fragments
-            
-            # Note: yt-dlp doesn't support embedding external subtitle URLs
-            # If subtitles are needed, ffmpeg fallback will handle them
             
             cmd.append(url)
             
             subprocess.run(cmd, check=True)
+            
+            # If we have external subtitles, mux them with ffmpeg
+            if subs_links and has_ffmpeg:
+                console.print()
+                console.print(status_msg("Embedding subtitles..."))
+                ffmpeg_cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", str(temp_out)]
+                for sub_url in subs_links:
+                    if sub_url:
+                        ffmpeg_cmd.extend(["-i", sub_url])
+                ffmpeg_cmd.extend(["-map", "0:v", "-map", "0:a"])
+                for i in range(1, len(subs_links) + 1):
+                    ffmpeg_cmd.extend(["-map", str(i)])
+                ffmpeg_cmd.extend(["-c:v", "copy", "-c:a", "copy", "-c:s", "srt", str(out_path)])
+                
+                subprocess.run(ffmpeg_cmd, check=True)
+                temp_out.unlink()  # Remove temp file
+            
             console.print()
             ok_msg("Saved: " + str(out_path))
             return
             
         except subprocess.CalledProcessError as e:
+            if temp_out.exists() and temp_out != out_path:
+                temp_out.unlink()
             warn_msg(f"yt-dlp failed (code {e.returncode}), trying ffmpeg...")
+        except KeyboardInterrupt:
+            console.print()
+            warn_msg("Download cancelled")
+            if temp_out.exists():
+                temp_out.unlink()
+            return
+    
+    # Fallback to ffmpeg only if yt-dlp unavailable or failed
+    if has_ffmpeg:
+        try:
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", url]
+            if subs_links:
+                for sub_url in subs_links:
+                    if sub_url:
+                        cmd.extend(["-i", sub_url])
+                cmd.extend(["-map", "0:v", "-map", "0:a"])
+                for i in range(1, len(subs_links) + 1):
+                    cmd.extend(["-map", str(i)])
+                cmd.extend(["-c:v", "copy", "-c:a", "copy", "-c:s", "srt"])
+            else:
+                cmd.extend(["-c", "copy"])
+            cmd.append(str(out_path))
+            
+            subprocess.run(cmd, check=True)
+            console.print()
+            ok_msg("Saved: " + str(out_path))
+        except FileNotFoundError:
+            err_msg("ffmpeg not found. Install ffmpeg to use -d/--download.")
+        except subprocess.CalledProcessError as e:
+            err_msg(f"Download failed (ffmpeg error code {e.returncode})")
         except KeyboardInterrupt:
             console.print()
             warn_msg("Download cancelled")
             if out_path.exists():
                 out_path.unlink()
-            return
-    
-    # Fallback to ffmpeg
-    try:
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-stats", "-i", url]
-        if subs_links:
-            for sub_url in subs_links:
-                if sub_url:
-                    cmd.extend(["-i", sub_url])
-            cmd.extend(["-map", "0:v", "-map", "0:a"])
-            for i in range(1, len(subs_links) + 1):
-                cmd.extend(["-map", str(i)])
-            cmd.extend(["-c:v", "copy", "-c:a", "copy", "-c:s", "srt"])
-        else:
-            cmd.extend(["-c", "copy"])
-        cmd.append(str(out_path))
-        
-        subprocess.run(cmd, check=True)
-        console.print()
-        ok_msg("Saved: " + str(out_path))
-    except FileNotFoundError:
-        err_msg("ffmpeg not found. Install ffmpeg to use -d/--download.")
-    except subprocess.CalledProcessError as e:
-        err_msg(f"Download failed (ffmpeg error code {e.returncode})")
-    except KeyboardInterrupt:
-        console.print()
-        warn_msg("Download cancelled")
-        if out_path.exists():
-            out_path.unlink()
-            console.print(f"[yellow]Removed partial file: {out_path.name}[/yellow]")
+                console.print(f"[yellow]Removed partial file: {out_path.name}[/yellow]")
+    else:
+        err_msg("No download tool available. yt-dlp failed and ffmpeg not found.")
 
 
 def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: bool = False, download_dir: str = ""):
