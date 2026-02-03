@@ -6,9 +6,14 @@
 
 *A Japanese minimalist media streaming engine*
 
-[![Python](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/othmanordaski/Nautilus/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/othmanordaski/Nautilus)
 [![Code style: zen](https://img.shields.io/badge/code%20style-zen-blueviolet.svg)](https://github.com/othmanordaski/Nautilus)
+[![Made with Python](https://img.shields.io/badge/made%20with-Python-1f425f.svg)](https://www.python.org/)
+
+[Installation](#-quick-start) • [Usage](#-usage) • [Features](#-features) • [Configuration](#%EF%B8%8F-configuration) • [Contributing](#-contributing)
 
 </div>
 

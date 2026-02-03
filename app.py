@@ -10,6 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from __version__ import __version__
 from rich.prompt import Prompt, IntPrompt
 from rich.text import Text
 
@@ -48,15 +49,16 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python app.py                    # Search and play
-  python app.py -l                 # Link only (copy URL for VLC)
-  python app.py -c                 # Continue from history
-  python app.py -j                 # Output JSON (video/subs) and exit
-  python app.py -p UpCloud -q 720  # Provider and quality
-  python app.py -n                 # No subtitles
-  python app.py -d [path]          # Download (path defaults to config or cwd)
+  nautilus                         # Search and play
+  nautilus -l                      # Link only (copy URL for VLC)
+  nautilus -c                      # Continue from history
+  nautilus -j                      # Output JSON (video/subs) and exit
+  nautilus -p UpCloud -q 720       # Provider and quality
+  nautilus -n                      # No subtitles
+  nautilus -d [path]               # Download (path defaults to config or cwd)
         """,
     )
+    p.add_argument("--version", action="version", version=f"Nautilus {__version__}")
     p.add_argument("-c", "--continue", dest="continue_watch", action="store_true", help="Continue from history")
     p.add_argument("-d", "--download", nargs="?", const="", metavar="PATH", help="Download video (optional path, else config/cwd)")
     p.add_argument("-l", "--link", action="store_true", help="Only print stream URL (e.g. for VLC)")

@@ -1,7 +1,25 @@
+# Python
 .venv/
+venv/
+env/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Database
 *.db
+*.sqlite
+*.sqlite3
+
+# Media files
 *.mkv
 *.mp4
 *.avi
@@ -9,6 +27,26 @@ __pycache__/
 *.wmv
 *.flv
 *.webm
-package.json
-node_modules/
+
+# Config
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (if any)
+node_modules/
+
+# Temporary
+*.tmp
+*.temp
+nautilus_stream.txt

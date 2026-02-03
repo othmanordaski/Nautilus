@@ -56,7 +56,7 @@ where = ["."]
 include = ["core*", "models*", "utils*"]
 
 [tool.setuptools]
-py-modules = ["app", "ui", "nautilus_cli"]
+py-modules = ["app", "ui", "nautilus_cli", "__version__"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.md"]
