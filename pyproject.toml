@@ -49,11 +49,14 @@ Repository = "https://github.com/othmanordaski/Nautilus"
 Issues = "https://github.com/othmanordaski/Nautilus/issues"
 
 [project.scripts]
-nautilus = "nautilus_cli:main"
+nautilus = "app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["core*", "models*", "utils*"]
+
+[tool.setuptools]
+py-modules = ["app", "ui", "nautilus_cli"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.md"]
