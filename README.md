@@ -52,7 +52,35 @@ Nautilus embodies the principles of **和 (wa - harmony)**:
 
 ### Installation
 
-#### Method 1: Automated Install (Recommended)
+#### Method 1: pipx (Recommended - Professional CLI Tool Installation)
+
+**pipx** is the industry standard for installing Python CLI tools. It creates isolated environments while making commands available system-wide.
+
+**Linux/Ubuntu:**
+```bash
+# Install pipx
+sudo apt install pipx
+pipx ensurepath
+
+# Install Nautilus
+git clone https://github.com/othmanordaski/Nautilus.git
+cd Nautilus
+pipx install -e .
+
+# Done! Use 'nautilus' anywhere
+```
+
+**macOS:**
+```bash
+brew install pipx
+pipx ensurepath
+
+git clone https://github.com/othmanordaski/Nautilus.git
+cd Nautilus
+pipx install -e .
+```
+
+#### Method 2: Automated Install Script
 
 **Linux/macOS:**
 ```bash
@@ -62,6 +90,12 @@ chmod +x install.sh
 ./install.sh
 ```
 
+The script automatically:
+- Detects and uses pipx (if available)
+- Falls back to isolated venv installation
+- Sets up PATH correctly
+- Checks for optional dependencies
+
 **Windows:**
 ```powershell
 git clone https://github.com/othmanordaski/Nautilus.git
@@ -69,7 +103,7 @@ cd Nautilus
 .\install.bat
 ```
 
-#### Method 2: pip Install (System-wide)
+#### Method 3: pip Install (System-wide)
 
 ```bash
 git clone https://github.com/othmanordaski/Nautilus.git
@@ -77,7 +111,7 @@ cd Nautilus
 pip install -e .
 ```
 
-#### Method 3: Manual Install
+#### Method 4: Manual Install
 
 ```bash
 # Clone the repository
@@ -173,6 +207,41 @@ nautilus -d ~/Downloads "The Wire"
 ### Advanced Options
 ```bash
 nautilus -p UpCloud -q 720 -n  # Provider, quality, no subs
+```
+
+## 🔧 Uninstall
+
+```bash
+# If installed via pipx
+pipx uninstall nautilus-stream
+
+# If installed via install.sh
+./uninstall.sh
+
+# Manual cleanup
+rm -rf ~/.config/nautilus
+rm -f ~/.local/bin/nautilus
+rm -rf ~/.local/share/nautilus-venv
+```
+
+## 💡 Shell Completion (Optional)
+
+Enable tab completion for commands:
+
+```bash
+# Bash
+echo 'source /path/to/Nautilus/nautilus-completion.bash' >> ~/.bashrc
+source ~/.bashrc
+
+# Zsh
+echo 'source /path/to/Nautilus/nautilus-completion.bash' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Now you can use tab completion:
+```bash
+nautilus -p <TAB>      # Shows: Vidcloud UpCloud
+nautilus -q <TAB>      # Shows: 360 480 720 1080 1440 2160 4k
 ```
 
 ## 🎮 Controls

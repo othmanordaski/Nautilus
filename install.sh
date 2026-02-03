@@ -1,5 +1,7 @@
 #!/bin/bash
 # Nautilus Installation Script for Linux/macOS
+# Professional system-integrated installation using pipx
+
 set -e
 
 echo "🌊 NAUTILUS Installation Script"
@@ -15,27 +17,74 @@ fi
 PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 echo "✓ Found Python $PYTHON_VERSION"
 
-# Check for pip module (more reliable than checking pip command)
-if python3 -m pip --version &> /dev/null; then
-    echo "✓ Found pip module"
-    PIP_CMD="python3 -m pip"
+# Detect installation method based on system
+INSTALL_METHOD=""
+
+# Check if pipx is available (BEST METHOD for CLI tools)
+if command -v pipx &> /dev/null; then
+    INSTALL_METHOD="pipx"
+    echo "✓ Found pipx (recommended method)"
+elif python3 -m pip --version &> /dev/null 2>&1; then
+    echo "ℹ️  pipx not found, using pip with virtual environment"
+    INSTALL_METHOD="pip"
 else
-    echo "❌ pip module is not installed."
-    echo "   Installing pip..."
-    python3 -m ensurepip --user || {
-        echo "   Failed to install pip automatically."
-        echo "   Please install manually:"
-        echo "     Ubuntu/Debian: sudo apt install python3-pip"
-        echo "     macOS: brew install python3"
-        exit 1
-    }
-    PIP_CMD="python3 -m pip"
+    echo "❌ Neither pipx nor pip is available."
+    echo ""
+    echo "Please install pipx (recommended):"
+    echo "  Ubuntu/Debian: sudo apt install pipx"
+    echo "  macOS: brew install pipx"
+    echo ""
+    echo "Or install pip:"
+    echo "  Ubuntu/Debian: sudo apt install python3-pip python3-venv"
+    exit 1
 fi
 
-# Install dependencies
 echo ""
-echo "📦 Installing Python dependencies..."
-$PIP_CMD install --user -e .
+echo "📦 Installing Nautilus..."
+
+if [ "$INSTALL_METHOD" = "pipx" ]; then
+    # PROFESSIONAL METHOD: Use pipx for isolated, system-wide CLI tool
+    pipx install -e .
+    pipx ensurepath
+    
+    echo ""
+    echo "✅ Installed via pipx (isolated environment)"
+    echo "   Command available system-wide: nautilus"
+    echo ""
+    echo "ℹ️  To upgrade: pipx upgrade nautilus-stream"
+    echo "ℹ️  To uninstall: pipx uninstall nautilus-stream"
+    
+else
+    # FALLBACK: Use pip with user install
+    # Create a local venv for the tool
+    VENV_DIR="$HOME/.local/share/nautilus-venv"
+    
+    if [ ! -d "$VENV_DIR" ]; then
+        echo "Creating isolated environment at $VENV_DIR..."
+        python3 -m venv "$VENV_DIR"
+    fi
+    
+    # Install into the venv
+    "$VENV_DIR/bin/pip" install -e .
+    
+    # Create symlink in user's local bin
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$VENV_DIR/bin/nautilus" "$HOME/.local/bin/nautilus"
+    
+    # Add to PATH if not already there
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        echo ""
+        echo "⚠️  Add to your shell profile (~/.bashrc or ~/.zshrc):"
+        echo '   export PATH="$HOME/.local/bin:$PATH"'
+        echo ""
+        echo "Then run: source ~/.bashrc  (or restart terminal)"
+    fi
+    
+    echo ""
+    echo "✅ Installed in isolated environment"
+    echo "   Virtual env: $VENV_DIR"
+    echo "   Command: $HOME/.local/bin/nautilus"
+fi
 
 # Check for optional dependencies
 echo ""
