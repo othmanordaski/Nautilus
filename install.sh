@@ -110,7 +110,12 @@ if command -v yt-dlp &> /dev/null; then
     echo "✓ yt-dlp found"
 else
     echo "⚠️  yt-dlp not found (optional, for fast downloads)"
-    echo "   Install: $PIP_CMD install --user yt-dlp"
+    if [ "$INSTALL_METHOD" = "pipx" ]; then
+        echo "   Install: pipx inject nautilus-stream yt-dlp"
+        echo "   Or: pip install --user yt-dlp"
+    else
+        echo "   Install: pip install --user yt-dlp"
+    fi
 fi
 
 if command -v aria2c &> /dev/null; then
@@ -119,11 +124,24 @@ else
     echo "ℹ️  aria2c not found (optional, for 10x faster downloads)"
     echo "   Install: sudo apt install aria2  (Ubuntu/Debian)"
     echo "            brew install aria2      (macOS)"
+    echo "            snap install aria2c     (Snap)"
 fi
 
 echo ""
 echo "✅ Installation complete!"
 echo ""
+
+# Remind user about PATH if using pipx
+if [ "$INSTALL_METHOD" = "pipx" ]; then
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        echo "⚠️  IMPORTANT: Run this command to activate nautilus:"
+        echo "   source ~/.bashrc"
+        echo ""
+        echo "   Or open a new terminal window"
+        echo ""
+    fi
+fi
+
 echo "Usage:"
 echo "  nautilus                    # Start interactive search"
 echo "  nautilus 'Breaking Bad'     # Search directly"
