@@ -15,17 +15,23 @@ fi
 PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 echo "✓ Found Python $PYTHON_VERSION"
 
-# Check for pip
-if ! command -v pip3 &> /dev/null; then
-    echo "❌ pip3 is not installed. Please install pip3."
+# Check for pip (try pip3 first, then pip)
+PIP_CMD=""
+if command -v pip3 &> /dev/null; then
+    PIP_CMD="pip3"
+elif command -v pip &> /dev/null; then
+    PIP_CMD="pip"
+else
+    echo "❌ pip is not installed. Please install pip."
+    echo "   Try: python3 -m ensurepip --user"
     exit 1
 fi
-echo "✓ Found pip3"
+echo "✓ Found $PIP_CMD"
 
 # Install dependencies
 echo ""
 echo "📦 Installing Python dependencies..."
-pip3 install --user -e .
+$PIP_CMD install --user -e .
 
 # Check for optional dependencies
 echo ""
@@ -51,7 +57,7 @@ if command -v yt-dlp &> /dev/null; then
     echo "✓ yt-dlp found"
 else
     echo "⚠️  yt-dlp not found (optional, for fast downloads)"
-    echo "   Install: pip3 install --user yt-dlp"
+    echo "   Install: $PIP_CMD install --user yt-dlp"
 fi
 
 if command -v aria2c &> /dev/null; then
