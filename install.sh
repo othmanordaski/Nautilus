@@ -15,18 +15,22 @@ fi
 PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
 echo "✓ Found Python $PYTHON_VERSION"
 
-# Check for pip (try pip3 first, then pip)
-PIP_CMD=""
-if command -v pip3 &> /dev/null; then
-    PIP_CMD="pip3"
-elif command -v pip &> /dev/null; then
-    PIP_CMD="pip"
+# Check for pip module (more reliable than checking pip command)
+if python3 -m pip --version &> /dev/null; then
+    echo "✓ Found pip module"
+    PIP_CMD="python3 -m pip"
 else
-    echo "❌ pip is not installed. Please install pip."
-    echo "   Try: python3 -m ensurepip --user"
-    exit 1
+    echo "❌ pip module is not installed."
+    echo "   Installing pip..."
+    python3 -m ensurepip --user || {
+        echo "   Failed to install pip automatically."
+        echo "   Please install manually:"
+        echo "     Ubuntu/Debian: sudo apt install python3-pip"
+        echo "     macOS: brew install python3"
+        exit 1
+    }
+    PIP_CMD="python3 -m pip"
 fi
-echo "✓ Found $PIP_CMD"
 
 # Install dependencies
 echo ""
