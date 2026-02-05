@@ -200,28 +200,33 @@ class FlixScraper:
         """
         try:
             if is_movie:
-                # Movie: ajax/movie/episodes -> pick link with provider title -> get episode id from href
+                # Movie: ajax/movie/episodes -> pick link with provider title -> extract episode_id from href
                 resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/movie/episodes/{media.id}")
                 if not resp:
                     return None
                 
-                soup = BeautifulSoup(resp.text, "html.parser")
+                # Parse HTML to find server link matching provider
+                html = resp.text
+                # Remove newlines and split by class="nav-item" like lobster does
+                html = html.replace('\n', '')
+                parts = html.split('class="nav-item"')
+                
                 episode_id = None
-                for a in soup.select("a[data-link][title]"):
-                    if self.provider.lower() in (a.get("title") or "").lower():
-                        href = a.get("href") or a.get("data-link") or ""
-                        # lobster: episode_id from URL like ...-123.456 -> 456
-                        m = re.search(r"-(\d+)\.(\d+)(?:\?|$)", href)
-                        if m:
-                            episode_id = m.group(2)
-                        break
-                if not episode_id:
-                    first = soup.select_one("a[data-link]")
-                    if first:
-                        href = first.get("href") or first.get("data-link") or ""
-                        m = re.search(r"-(\d+)\.(\d+)(?:\?|$)", href)
-                        if m:
-                            episode_id = m.group(2)
+                for part in parts[1:]:  # Skip first part before any nav-item
+                    # Look for href and title in this nav-item
+                    # Pattern: href="..." ... title="Provider"
+                    title_match = re.search(r'title="([^"]*)"', part)
+                    if title_match and self.provider.lower() in title_match.group(1).lower():
+                        # Found matching provider, extract href
+                        href_match = re.search(r'href="([^"]*)"', part)
+                        if href_match:
+                            href = href_match.group(1)
+                            # Extract episode_id from URL format: /watch-movie-name-{movie_id}.{episode_id}
+                            id_match = re.search(r'-(\d+)\.(\d+)$', href)
+                            if id_match:
+                                episode_id = id_match.group(2)
+                                break
+                
                 if not episode_id:
                     console.print(f"[red]Could not find episode ID for {media.title}[/red]")
                     return None
