@@ -26,9 +26,11 @@ class Config:
         self.settings = self.DEFAULTS.copy()
         if self.DEFAULT_CONFIG_PATH.exists():
             try:
-                with open(self.DEFAULT_CONFIG_PATH, 'r') as f:
+                with open(self.DEFAULT_CONFIG_PATH, 'r', encoding='utf-8') as f:
                     self.settings.update(json.load(f))
-            except Exception: pass
+            except (json.JSONDecodeError, IOError):
+                # Fall back to defaults if config is malformed or unreadable
+                pass
 
     def get(self, key):
         return self.settings.get(key)

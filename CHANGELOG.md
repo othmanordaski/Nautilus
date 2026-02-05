@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-02-03
+## [1.0.0] - 2026-02-05
 
 ### Added
 - 🎯 Full packaging support with `pyproject.toml`
@@ -26,17 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🌍 Multi-language subtitle support
 - 📊 Clean single-line download progress
 - ⚙️ JSON configuration file support
+- 📝 Example configuration file (`nautilus_config.example.json`)
 
 ### Fixed
 - ❌ Removed invalid `--sub-file` option from yt-dlp
 - 🔧 Fixed module import errors for CLI entry point
 - 🧹 Cleaned up duplicate error handling
 - 📦 Updated .gitignore for build artifacts and media files
+- 🔒 Improved exception handling with specific exception types
+- 📄 Added user config to .gitignore to prevent accidental commits
 
 ### Changed
 - 🎯 yt-dlp now primary downloader (was limited to non-subtitle downloads)
 - 📝 Clarified README config documentation to show JSON format
 - 🚀 Improved download speed with optimized yt-dlp + aria2c settings
+- 📊 Pinned dependency versions for reproducible builds
+- 🎯 Updated Development Status to Production/Stable (v1.0.0)
 
 ## [Unreleased]
 

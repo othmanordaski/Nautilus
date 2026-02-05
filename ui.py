@@ -399,7 +399,7 @@ async def prompt_select(prompt_label: str, choices: list) -> str:
     try:
         numeric_choices = [int(c) for c in choices]
         is_numeric = True
-    except:
+    except (ValueError, TypeError):
         numeric_choices = choices
         is_numeric = False
     

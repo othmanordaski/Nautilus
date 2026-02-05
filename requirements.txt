@@ -1,4 +1,4 @@
-rich
-httpx
-beautifulsoup4
-questionary
+rich>=13.0.0
+httpx>=0.24.0
+beautifulsoup4>=4.11.0
+questionary>=2.0.0

@@ -271,6 +271,12 @@ nautilus -q <TAB>      # Shows: 360 480 720 1080 1440 2160 4k
 
 ## 🛠️ Configuration
 
+Copy `nautilus_config.example.json` to `nautilus_config.json` and customize:
+
+```bash
+cp nautilus_config.example.json nautilus_config.json
+```
+
 Edit `nautilus_config.json` in the project directory or use `nautilus -e`:
 
 ```json

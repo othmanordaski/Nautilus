@@ -1,6 +1,7 @@
 include README.md
 include LICENSE
 include requirements.txt
+include nautilus_config.example.json
 include TEST_SCENARIOS.md
 include install.sh
 include install.bat

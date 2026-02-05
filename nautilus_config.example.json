@@ -1,0 +1,14 @@
+{
+  "base_url": "https://flixhq.to",
+  "decrypt_api": "https://dec.eatmynerds.live",
+  "player": "mpv",
+  "history_db": "nautilus.db",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "watchlater_dir": "",
+  "provider": "Vidcloud",
+  "subs_language": "english",
+  "quality": "1080",
+  "no_subs": false,
+  "history": true,
+  "download_dir": "."
+}

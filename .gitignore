@@ -30,6 +30,7 @@ build/
 
 # Config
 *.log
+nautilus_config.json
 
 # IDE
 .vscode/
