@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔄 Resume playback from last position
 - 🌍 Multi-language subtitle support
 - 📊 Clean single-line download progress
-- ⚙️ YAML configuration file support
+- ⚙️ JSON configuration file support
 
 ### Fixed
 - ❌ Removed invalid `--sub-file` option from yt-dlp
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - 🎯 yt-dlp now primary downloader (was limited to non-subtitle downloads)
-- 📝 Updated README config documentation from JSON to YAML format
+- 📝 Clarified README config documentation to show JSON format
 - 🚀 Improved download speed with optimized yt-dlp + aria2c settings
 
 ## [Unreleased]

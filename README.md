@@ -271,21 +271,23 @@ nautilus -q <TAB>      # Shows: 360 480 720 1080 1440 2160 4k
 
 ## 🛠️ Configuration
 
-Edit `~/.config/nautilus/config.yaml` (or `%APPDATA%\nautilus\config.yaml` on Windows) or use `python app.py -e`:
+Edit `nautilus_config.json` in the project directory or use `nautilus -e`:
 
-```yaml
-base_url: "https://flixhq.to"
-decrypt_api: "https://dec.eatmynerds.live"
-player: "mpv"
-provider: "Vidcloud"
-quality: "1080"
-subs_language: "english"
-history_db: "nautilus.db"
-watchlater_dir: "/tmp/nautilus_watchlater"
-download_dir: "."
-user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-no_subs: false
-```
+```json
+{
+  "base_url": "https://flixhq.to",
+  "decrypt_api": "https://dec.eatmynerds.live",
+  "player": "mpv",
+  "provider": "Vidcloud",
+  "quality": "1080",
+  "subs_language": "english",
+  "history_db": "nautilus.db",
+  "watchlater_dir": "/tmp/nautilus_watchlater",
+  "download_dir": ".",
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  "no_subs": false,
+  "history": true
+}
 
 ## 📋 Command Line Options
 

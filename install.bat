@@ -92,6 +92,6 @@ echo   nautilus "Breaking Bad"     # Search directly
 echo   nautilus -c                 # Continue watching
 echo   nautilus -d                 # Download mode
 echo.
-echo Configuration: %%APPDATA%%\nautilus\config.yaml
+echo Configuration: nautilus_config.json in project directory
 echo.
 pause
