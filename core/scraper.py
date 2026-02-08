@@ -44,7 +44,7 @@ class FlixScraper:
             except httpx.TimeoutException:
                 if attempt < self.max_retries - 1:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[#e3b341]Request timeout. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
+                    console.print(f"[#d29922]Request timeout. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#d29922]")
                     await asyncio.sleep(delay)
                 else:
                     console.print(f"[#f85149]Request timed out after {self.max_retries} attempts[/#f85149]")
@@ -53,7 +53,7 @@ class FlixScraper:
             except httpx.HTTPStatusError as e:
                 if attempt < self.max_retries - 1 and e.response.status_code >= 500:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[#e3b341]Server error ({e.response.status_code}). Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
+                    console.print(f"[#d29922]Server error ({e.response.status_code}). Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#d29922]")
                     await asyncio.sleep(delay)
                 else:
                     console.print(f"[#f85149]HTTP error {e.response.status_code}: {e.response.reason_phrase}[/#f85149]")
@@ -62,7 +62,7 @@ class FlixScraper:
             except httpx.NetworkError:
                 if attempt < self.max_retries - 1:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[#e3b341]Network error. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
+                    console.print(f"[#d29922]Network error. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#d29922]")
                     await asyncio.sleep(delay)
                 else:
                     console.print(f"[#f85149]Network error: Unable to connect after {self.max_retries} attempts[/#f85149]")

@@ -119,7 +119,7 @@ class MediaPlayer:
 
         cmd.append(url)
 
-        console.print("[bold cyan]Launching mpv...[/bold cyan]")
+        console.print(f"[bold #58a6ff]▸ Launching mpv...[/bold #58a6ff]")
         try:
             # Wait for mpv to finish (blocking) so we can get final position
             process = subprocess.run(

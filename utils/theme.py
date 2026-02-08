@@ -1,63 +1,135 @@
 """
-深海 shinkai · the deep
-Nautilus deep-ocean theme.
+深 淵   A B Y S S
+Nautilus — premium terminal design system.
 
-Palette drawn from the creature itself:
-- Nacre (真珠層): Iridescent mother-of-pearl interior
-- Abyssal zone (深淵): Lightless ocean depths
-- Bioluminescence (生物発光): Cold living light
-- Coral reef (珊瑚礁): Warm organic structure
+A color architecture built in layers, like the ocean itself:
+  Surface    →  where light still reaches (highlights, focus)
+  Twilight   →  dimming, mysterious (secondary elements)
+  Midnight   →  the deep blue hour (primary UI chrome)
+  Abyss      →  total depth (backgrounds, voids)
+
+Accents are living creatures — bioluminescent organisms
+that punctuate the darkness with electric purpose.
 """
 from rich import box
 
-# ━━━ Core Palette — Abyssal Depth ━━━
-# Layered greys inspired by ocean strata at depth
-INK = "#c9d1d9"              # 真珠 Nacre — pearlescent primary text
-MIST = "#8b949e"             # 潮 Tide — secondary text, seafoam grey
-SHADOW = "#6e7681"           # 陰 Undertow — subtle UI chrome
-VOID = "#30363d"             # 淵 Abyss — deep structural accents
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  DEPTH SYSTEM — four strata of luminance
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# ━━━ Accent Palette — Bioluminescence ━━━
-# The cold glow of deep-sea creatures
-CYAN = "#58a6ff"             # 発光 Bioluminescent blue — primary accent
-CYAN_DIM = "#79c0ff"         # 淡光 Soft glow — hover / secondary accent
-TEAL = "#3fb9a2"             # 翡翠 Sea glass — success, life
-CORAL = "#f85149"            # 珊瑚 Deep coral — error, danger
-AMBER = "#e3b341"            # 琥珀 Amber trapped in resin — warning
-PEARL = "#f0f6fc"            # 光 Pure nacre — highlights, focus
+# Surface (表層 hyōsō) — brightest, for primary content
+SURFACE = "#e6edf3"         # Moonlit water surface
 
-# ━━━ Semantic Mapping ━━━
-TEXT = INK                   # Primary text — nacre white
-TEXT_DIM = MIST              # Secondary text — tide grey
-ACCENT = CYAN                # Interactive elements — bioluminescent
-ACCENT_DIM = CYAN_DIM        # Softer accent variant
-MUTED = SHADOW               # Borders, dividers — undertow
-SUCCESS = TEAL               # Success states — sea glass green
-ERROR = CORAL                # Error states — deep coral
-WARN = AMBER                 # Warning states — amber resin
-HIGHLIGHT = PEARL            # Selection, focus — nacre glow
+# Twilight (薄明 hakumei) — secondary, supporting text
+TWILIGHT = "#8b949e"        # Where light fades to blue
 
-# ━━━ Box Styles — 殻 kara (shell) ━━━
-# Structured like the chambers of a nautilus shell
-BANNER_BOX = box.HEAVY_HEAD       # Bold header — shell lip
-CARD_BOX = box.ROUNDED            # Rounded — organic shell curves
-LIST_BOX = box.SIMPLE_HEAD        # Clean separation — shell septa
-PANEL_BOX = box.ROUNDED           # Consistent organic feel
+# Midnight (深夜 shinya) — chrome, borders, quiet structure
+MIDNIGHT = "#484f58"        # The deep blue hour
 
-# ━━━ Symbols — 深海記号 shinkai kigō ━━━
-# Geometric + organic glyphs for the deep
-BULLET = "◈"                # Diamond — faceted shell chamber
-SEPARATOR = "│"             # Thin bar — shell septum divider
-ARROW = "›"                 # Chevron — current direction
-PREFIX = "  "               # Two spaces — breathing room
+# Abyss (深淵 shin'en) — voids, backgrounds, absence
+ABYSS = "#21262d"           # Where no light reaches
 
-# ━━━ Typography Spacing ━━━
-# Ma (間) still respected — negative space gives form
-PADDING_COMPACT = (0, 2)    # Tight — inside a shell chamber
-PADDING_DEFAULT = (1, 3)    # Balanced — swimming room
-PADDING_GENEROUS = (2, 4)   # Spacious — open water
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  BIOLUMINESCENCE — living accent colors
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# ━━━ Legacy Support ━━━
+# Primary — Electric Jellyfish  (クラゲ kurage)
+ELECTRIC = "#58a6ff"        # Primary interactive glow
+ELECTRIC_DIM = "#388bfd"    # Deeper state of the same glow
+
+# Secondary — Moonlit Plankton  (プランクトン purankuton)
+PLANKTON = "#79c0ff"        # Softer cyan for secondary accent
+
+# Life — Sea Glass  (シーグラス shīgurasu)
+SEAGLASS = "#3fb950"        # Success — vivid green life
+SEAGLASS_DIM = "#238636"    # Darker success for borders
+
+# Danger — Fire Coral  (ファイアコーラル faia kōraru)
+FIRECORAL = "#f85149"       # Error — hot, unmistakable
+FIRECORAL_DIM = "#da3633"   # Darker danger for borders
+
+# Caution — Amber Resin  (琥珀 kohaku)
+AMBER = "#d29922"           # Warning — trapped light
+AMBER_DIM = "#9e6a03"       # Darker amber for borders
+
+# Nacre — Mother of Pearl  (真珠母 shinjubo)
+NACRE = "#f0f6fc"           # Pure highlight, maximum contrast
+
+# Lavender — Deep Sea Anemone  (イソギンチャク isoginchaku)
+ANEMONE = "#bc8cff"         # Special accent — purple glow
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  SEMANTIC MAPPING — purpose-driven aliases
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TEXT = SURFACE               # Primary readable text
+TEXT_DIM = TWILIGHT           # Secondary / supporting text
+ACCENT = ELECTRIC             # Interactive, clickable, active
+ACCENT_DIM = ELECTRIC_DIM    # Interactive pressed/visited
+MUTED = MIDNIGHT              # Borders, rules, quiet chrome
+SUCCESS = SEAGLASS            # Confirmed, saved, done
+ERROR = FIRECORAL             # Failed, broken, stop
+WARN = AMBER                  # Attention needed, caution
+HIGHLIGHT = NACRE             # Maximum emphasis
+SPECIAL = ANEMONE             # Unique / distinct category
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  BOX STYLES — 殻 kara (shell architecture)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BANNER_BOX = box.DOUBLE           # Grand entrance — double walls
+CARD_BOX = box.ROUNDED            # Organic curves — shell chambers
+LIST_BOX = box.ROUNDED            # Consistent rounded for lists
+PANEL_BOX = box.ROUNDED           # Uniform organic feel
+STREAM_BOX = box.HEAVY            # Emphasis — thick shell lip
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  GLYPHS — 深海記号 shinkai kigō
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Navigation
+ARROW = "›"                 # Chevron — forward
+ARROW_BACK = "‹"            # Chevron — back
+POINTER = "▸"               # Selection triangle
+
+# List items
+BULLET = "◆"                # Primary — filled diamond
+BULLET_HOLLOW = "◇"         # Secondary — hollow diamond
+BULLET_DOT = "●"            # Status indicator — filled
+BULLET_RING = "○"           # Inactive status — hollow
+
+# Separators
+SEP = "·"                   # Inline gentle separator
+SEP_BAR = "│"               # Column divider
+SEP_DASH = "─"              # Horizontal thin rule
+
+# Decorative
+SHELL = "⬡"                 # Nautilus cross-section
+WAVE = "〜"                 # Ocean motif
+DIAMOND = "◈"               # Faceted precious
+
+# Layout
+PREFIX = "  "               # 2-space indent
+PREFIX_DEEP = "    "        # 4-space nested
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  SPACING — Ma (間) negative space
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PADDING_TIGHT = (0, 1)      # Inline elements
+PADDING_COMPACT = (0, 2)    # List items
+PADDING_DEFAULT = (1, 3)    # Cards
+PADDING_GENEROUS = (1, 4)   # Panels — open water
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  LEGACY COMPAT — old names → new system
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INK = TEXT
+MIST = TEXT_DIM
+SHADOW = MUTED
+VOID = ABYSS
+SEPARATOR = SEP
 PANEL_BORDER = MUTED
 TITLE = f"[{TEXT}]"
 SUBTITLE = f"[{TEXT_DIM}]"

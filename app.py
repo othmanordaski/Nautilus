@@ -214,7 +214,7 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
             warn_msg("Download cancelled")
             if out_path.exists():
                 out_path.unlink()
-                console.print(f"[#e3b341]Removed partial file: {out_path.name}[/#e3b341]")
+                console.print(f"[#d29922]Removed partial file: {out_path.name}[/#d29922]")
     else:
         err_msg("No download tool available. yt-dlp failed and ffmpeg not found.")
 
@@ -240,7 +240,7 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
     stream_panel(url or "", str(tmp))
     if link_only:
         info_text = Text()
-        info_text.append("Copy with mouse or Ctrl+Shift+C", style="#8b949e")
+        info_text.append("Copy with mouse or Ctrl+Shift+C", style="#484f58")
         console.print()
         console.print(info_text)
         Prompt.ask("Press Enter to exit", default="")
@@ -278,26 +278,26 @@ async def _handle_next_episode(scr, db, selected, seasons, episodes, current_sea
     choices = []
     if has_next_in_season:
         next_ep_num = current_episode_num + 1
-        choices.append(f"→ Play Next Episode ({next_ep_num})")
+        choices.append(f"▸ Next Episode ({next_ep_num})")
     if has_next_season:
-        choices.append(f"→ Next Season (Season {current_season_num + 1})")
-    choices.append("✓ Exit")
+        choices.append(f"▸ Next Season (Season {current_season_num + 1})")
+    choices.append(f"● Done")
     
     selection = await questionary.select(
         "Continue watching?",
         choices=choices,
         style=questionary.Style([
-            ('qmark', 'fg:#58a6ff'),
-            ('question', 'fg:#c9d1d9'),
+            ('qmark', 'fg:#58a6ff bold'),
+            ('question', 'fg:#e6edf3'),
             ('pointer', 'fg:#58a6ff bold'),
-            ('highlighted', 'fg:#58a6ff bold'),
-            ('selected', 'fg:#3fb9a2'),
-            ('answer', 'fg:#79c0ff bold'),
-            ('text', 'fg:#c9d1d9'),
+            ('highlighted', 'fg:#79c0ff bold'),
+            ('selected', 'fg:#3fb950 bold'),
+            ('answer', 'fg:#3fb950 bold'),
+            ('text', 'fg:#8b949e'),
         ])
     ).ask_async()
     
-    if not selection or "Exit" in selection:
+    if not selection or "Done" in selection:
         return None
     
     # Clear screen for next episode
@@ -400,8 +400,8 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
     recent = db.get_recent()
     if recent:
         recent_text = Text()
-        recent_text.append("Recent: ", style="#8b949e")
-        recent_text.append(", ".join(r[0] for r in recent), style="#c9d1d9")
+        recent_text.append("Recent: ", style="#484f58")
+        recent_text.append(", ".join(r[0] for r in recent), style="#8b949e")
         console.print()
         console.print(recent_text)
 
