@@ -1,12 +1,12 @@
 """
-和 wa · harmony
-Japanese minimalist UI for Nautilus.
+深海 shinkai · the deep
+Nautilus deep-ocean UI.
 
 Design principles:
-- Ma (間): Embrace negative space, let content breathe
-- Kanso (簡素): Simplicity without sacrifice
-- Shibui (渋い): Subtle, unobtrusive elegance
-- Seijaku (静寂): Stillness and calm in motion
+- Ma (間): Negative space gives form to the abyss
+- Shinkai (深海): Depth defines hierarchy
+- Hakkō (発光): Bioluminescence draws the eye
+- Kara (殻): Shell structure organizes information
 """
 from rich.console import Console
 from rich.panel import Panel
@@ -25,17 +25,17 @@ from utils.theme import (
 
 console = Console()
 
-# Questionary custom style matching Japanese aesthetic
-# Using hex colors for prompt_toolkit compatibility
+# Questionary style — bioluminescent deep-ocean accents
+# Hex colors for prompt_toolkit compatibility
 _selection_style = Style([
-    ('qmark', 'fg:#5c6bc0'),              # Question mark/arrow - indigo
-    ('question', 'fg:#b3b3b3'),           # Question text - grey70 equivalent
-    ('pointer', 'fg:#5c6bc0 bold'),       # Selection pointer - indigo
-    ('highlighted', 'fg:#5c6bc0 bold'),   # Selected item - indigo
-    ('selected', 'fg:#5c6bc0'),           # Confirmed selection - indigo
-    ('answer', 'fg:#5c6bc0 bold'),        # Final answer - indigo
-    ('text', 'fg:#b3b3b3'),               # Normal text - grey70 equivalent
-    ('disabled', 'fg:#595959'),           # Disabled items - grey35 equivalent
+    ('qmark', 'fg:#58a6ff'),              # Question mark — bioluminescent cyan
+    ('question', 'fg:#c9d1d9'),           # Question text — nacre pearl
+    ('pointer', 'fg:#58a6ff bold'),       # Selection pointer — bright glow
+    ('highlighted', 'fg:#58a6ff bold'),   # Highlighted item — active glow
+    ('selected', 'fg:#3fb9a2'),           # Confirmed selection — sea glass
+    ('answer', 'fg:#79c0ff bold'),        # Final answer — soft cyan
+    ('text', 'fg:#c9d1d9'),               # Normal text — nacre
+    ('disabled', 'fg:#6e7681'),           # Disabled items — undertow grey
 ])
 
 # Context state for breadcrumb navigation
@@ -55,22 +55,30 @@ def clear_context():
 
 def banner(show_version: bool = True):
     """
-    Opening statement - like a zen enso circle ○
-    Elegant, minimal, breathing.
+    Opening statement — the nautilus surfaces.
+    Bioluminescent glow emerging from the deep.
     """
     console.print()
     console.print()
     
-    # Main title with generous spacing
+    # Ambient glow line
+    glow_line = Text()
+    glow_line.append("    ─── ", style=SHADOW)
+    glow_line.append("⬡", style=ACCENT)
+    glow_line.append(" ───", style=SHADOW)
+    console.print(glow_line)
+    console.print()
+    
+    # Main title — bright bioluminescent
     title_text = Text()
-    title_text.append("            ", style=TEXT)
+    title_text.append("        ", style=TEXT)
     title_text.append("N A U T I L U S", style=f"bold {ACCENT}")
     console.print(title_text)
     
-    # Japanese subtitle - 航海 (voyage/navigation)
+    # Tagline — 深海 (deep sea)
     subtitle = Text()
-    subtitle.append("              ", style=TEXT)
-    subtitle.append("航 海", style=MIST)
+    subtitle.append("          ", style=TEXT)
+    subtitle.append("深 海", style=MIST)
     if show_version:
         subtitle.append("  ", style=TEXT)
         subtitle.append(f"{SEPARATOR}  ", style=SHADOW)
@@ -78,7 +86,7 @@ def banner(show_version: bool = True):
     console.print(subtitle)
     
     console.print()
-    console.print(Rule(style=SHADOW, characters="─"))
+    console.print(Rule(style=SHADOW, characters="━"))
     console.print()
 
 
@@ -325,7 +333,7 @@ def section_title(title: str, subtitle: str = "", show_breadcrumb: bool = False)
         title_text.append(subtitle, style=MIST)
     
     console.print(title_text)
-    console.print(Rule(style=SHADOW, characters="─"))
+    console.print(Rule(style=SHADOW, characters="━"))
 
 
 def show_cards(items: list, title_key: str, badge_key: str = None, badge_fmt=None):
@@ -372,11 +380,11 @@ def stream_panel(url: str, tmp_path: str):
     console.print()
     
     content = Text()
-    content.append("Stream URL\n\n", style=f"bold {TEXT}")
+    content.append("◈ Stream URL\n\n", style=f"bold {ACCENT}")
     content.append(f"{url}\n\n", style=HIGHLIGHT)
     content.append(f"Saved to: ", style=MIST)
     content.append(f"{tmp_path}\n\n", style=TEXT_DIM)
-    content.append("VLC: Media → Open Network Stream (Ctrl+N)", style=MIST)
+    content.append("VLC: Media › Open Network Stream (Ctrl+N)", style=MIST)
     
     console.print(
         Panel(
@@ -449,11 +457,11 @@ async def prompt_select_items(prompt_label: str, items: list, format_func, show_
     if show_help:
         help_text = Text()
         help_text.append("  ", style=TEXT)
-        help_text.append("↑↓ navigate", style=SHADOW)
+        help_text.append("↑↓ navigate", style=MIST)
         help_text.append(f"  {SEPARATOR}  ", style=SHADOW)
-        help_text.append("↵ select", style=SHADOW)
+        help_text.append("↵ select", style=MIST)
         help_text.append(f"  {SEPARATOR}  ", style=SHADOW)
-        help_text.append("^C cancel", style=SHADOW)
+        help_text.append("^C cancel", style=MIST)
         console.print(help_text)
         console.print()
     

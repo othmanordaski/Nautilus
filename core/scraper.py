@@ -1,4 +1,4 @@
-"""Lobster-style scraper: provider selection, decrypt API, subtitles, quality."""
+﻿"""Lobster-style scraper: provider selection, decrypt API, subtitles, quality."""
 import re
 import httpx
 import asyncio
@@ -44,32 +44,32 @@ class FlixScraper:
             except httpx.TimeoutException:
                 if attempt < self.max_retries - 1:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[yellow]Request timeout. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    console.print(f"[#e3b341]Request timeout. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
                     await asyncio.sleep(delay)
                 else:
-                    console.print(f"[red]Request timed out after {self.max_retries} attempts[/red]")
+                    console.print(f"[#f85149]Request timed out after {self.max_retries} attempts[/#f85149]")
                     return None
                     
             except httpx.HTTPStatusError as e:
                 if attempt < self.max_retries - 1 and e.response.status_code >= 500:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[yellow]Server error ({e.response.status_code}). Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    console.print(f"[#e3b341]Server error ({e.response.status_code}). Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
                     await asyncio.sleep(delay)
                 else:
-                    console.print(f"[red]HTTP error {e.response.status_code}: {e.response.reason_phrase}[/red]")
+                    console.print(f"[#f85149]HTTP error {e.response.status_code}: {e.response.reason_phrase}[/#f85149]")
                     return None
                     
             except httpx.NetworkError:
                 if attempt < self.max_retries - 1:
                     delay = self.retry_delay * (2 ** attempt)
-                    console.print(f"[yellow]Network error. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/yellow]")
+                    console.print(f"[#e3b341]Network error. Retrying in {delay:.1f}s... ({attempt + 1}/{self.max_retries})[/#e3b341]")
                     await asyncio.sleep(delay)
                 else:
-                    console.print(f"[red]Network error: Unable to connect after {self.max_retries} attempts[/red]")
+                    console.print(f"[#f85149]Network error: Unable to connect after {self.max_retries} attempts[/#f85149]")
                     return None
                     
             except Exception as e:
-                console.print(f"[red]Unexpected error: {type(e).__name__}: {e}[/red]")
+                console.print(f"[#f85149]Unexpected error: {type(e).__name__}: {e}[/#f85149]")
                 return None
         
         return None
@@ -101,7 +101,7 @@ class FlixScraper:
                 results.append(MediaItem(title=title, id=mid, type=kind, url=href))
             return results
         except Exception as e:
-            console.print(f"[red]Failed to parse search results: {e}[/red]")
+            console.print(f"[#f85149]Failed to parse search results: {e}[/#f85149]")
             return []
 
     async def get_seasons(self, media_id: str) -> List[Dict[str, Any]]:
@@ -117,7 +117,7 @@ class FlixScraper:
                 for i, el in enumerate(items)
             ]
         except Exception as e:
-            console.print(f"[red]Failed to load seasons: {e}[/red]")
+            console.print(f"[#f85149]Failed to load seasons: {e}[/#f85149]")
             return []
 
     async def get_episodes(self, season_id: str) -> List[Dict[str, Any]]:
@@ -130,7 +130,7 @@ class FlixScraper:
             items = soup.select(".nav-item a[data-id]")
             return [{"id": el["data-id"], "number": i + 1} for i, el in enumerate(items)]
         except Exception as e:
-            console.print(f"[red]Failed to load episodes: {e}[/red]")
+            console.print(f"[#f85149]Failed to load episodes: {e}[/#f85149]")
             return []
 
     def _pick_server_id(self, html: str) -> Optional[str]:
@@ -151,7 +151,7 @@ class FlixScraper:
                 return None
             return resp.json().get("link")
         except Exception as e:
-            console.print(f"[red]Failed to get embed link: {e}[/red]")
+            console.print(f"[#f85149]Failed to get embed link: {e}[/#f85149]")
             return None
 
     async def _extract_from_embed(self, embed_url: str) -> Dict[str, Any]:
@@ -175,7 +175,7 @@ class FlixScraper:
                     out["subs"].append(t["file"])
             return out
         except Exception as e:
-            console.print(f"[red]Failed to decrypt stream: {e}[/red]")
+            console.print(f"[#f85149]Failed to decrypt stream: {e}[/#f85149]")
             return out
 
     def _apply_quality(self, url: str) -> str:
@@ -228,7 +228,7 @@ class FlixScraper:
                                 break
                 
                 if not episode_id:
-                    console.print(f"[red]Could not find episode ID for {media.title}[/red]")
+                    console.print(f"[#f85149]Could not find episode ID for {media.title}[/#f85149]")
                     return None
                 display_title = media.title
             else:
@@ -241,7 +241,7 @@ class FlixScraper:
                 
                 server_id = self._pick_server_id(srv_resp.text)
                 if not server_id:
-                    console.print(f"[red]Could not find server for provider: {self.provider}[/red]")
+                    console.print(f"[#f85149]Could not find server for provider: {self.provider}[/#f85149]")
                     return None
                 
                 src_resp = await self._request_with_retry("GET", f"{self.base_url}/ajax/episode/sources/{server_id}")
@@ -250,13 +250,13 @@ class FlixScraper:
                 
                 embed_url = src_resp.json().get("link") if src_resp.json() else None
                 if not embed_url:
-                    console.print(f"[red]Could not get embed URL[/red]")
+                    console.print(f"[#f85149]Could not get embed URL[/#f85149]")
                     return None
                 display_title = f"{media.title} - S{season_num}E{episode_num}"
                 ext = await self._extract_from_embed(embed_url)
                 url = ext.get("file")
                 if not url:
-                    console.print(f"[red]Failed to extract video URL[/red]")
+                    console.print(f"[#f85149]Failed to extract video URL[/#f85149]")
                     return None
                 url = self._apply_quality(url)
                 subs = [] if config.get("no_subs") else ext.get("subs") or []
@@ -269,12 +269,12 @@ class FlixScraper:
             # Movie path: get embed from episode_id
             embed_url = await self._get_embed_link(episode_id)
             if not embed_url:
-                console.print(f"[red]Could not get embed link for {media.title}[/red]")
+                console.print(f"[#f85149]Could not get embed link for {media.title}[/#f85149]")
                 return None
             ext = await self._extract_from_embed(embed_url)
             url = ext.get("file")
             if not url:
-                console.print(f"[red]Failed to extract video URL for {media.title}[/red]")
+                console.print(f"[#f85149]Failed to extract video URL for {media.title}[/#f85149]")
                 return None
             url = self._apply_quality(url)
             subs = [] if config.get("no_subs") else (ext.get("subs") or [])
@@ -285,7 +285,7 @@ class FlixScraper:
                 "json_data": ext.get("json"),
             }
         except Exception as e:
-            console.print(f"[red]Error getting stream data: {type(e).__name__}: {e}[/red]")
+            console.print(f"[#f85149]Error getting stream data: {type(e).__name__}: {e}[/#f85149]")
             return None
 
     async def get_stream_url(self, media: MediaItem, s: int = 1, e: int = 1) -> Optional[Dict]:

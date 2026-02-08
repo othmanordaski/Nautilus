@@ -1,4 +1,4 @@
-import os
+﻿import os
 import subprocess
 import shutil
 import sys
@@ -80,7 +80,7 @@ class MediaPlayer:
             player_bin = f"{player_bin}.exe"
 
         if not shutil.which(player_bin):
-            console.print(f"[red]Player '{player_bin}' not found. Install mpv or set 'player' in config.[/red]")
+            console.print(f"[#f85149]Player '{player_bin}' not found. Install mpv or set 'player' in config.[/#f85149]")
             return None
 
         # Watch-later directory for resume (like lobster's watchlater_dir)
@@ -141,5 +141,5 @@ class MediaPlayer:
             return final_position
             
         except OSError as e:
-            console.print(f"[red]Failed to start player: {e}[/red]")
+            console.print(f"[#f85149]Failed to start player: {e}[/#f85149]")
             return None

@@ -214,7 +214,7 @@ def _download_video(url: str, title: str, download_dir: str, subs_links: list) -
             warn_msg("Download cancelled")
             if out_path.exists():
                 out_path.unlink()
-                console.print(f"[yellow]Removed partial file: {out_path.name}[/yellow]")
+                console.print(f"[#e3b341]Removed partial file: {out_path.name}[/#e3b341]")
     else:
         err_msg("No download tool available. yt-dlp failed and ffmpeg not found.")
 
@@ -240,7 +240,7 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
     stream_panel(url or "", str(tmp))
     if link_only:
         info_text = Text()
-        info_text.append("Copy with mouse or Ctrl+Shift+C", style="grey50")
+        info_text.append("Copy with mouse or Ctrl+Shift+C", style="#8b949e")
         console.print()
         console.print(info_text)
         Prompt.ask("Press Enter to exit", default="")
@@ -287,13 +287,13 @@ async def _handle_next_episode(scr, db, selected, seasons, episodes, current_sea
         "Continue watching?",
         choices=choices,
         style=questionary.Style([
-            ('qmark', 'fg:#5c6bc0'),
-            ('question', 'fg:#b3b3b3'),
-            ('pointer', 'fg:#5c6bc0 bold'),
-            ('highlighted', 'fg:#5c6bc0 bold'),
-            ('selected', 'fg:#5c6bc0'),
-            ('answer', 'fg:#5c6bc0 bold'),
-            ('text', 'fg:#b3b3b3'),
+            ('qmark', 'fg:#58a6ff'),
+            ('question', 'fg:#c9d1d9'),
+            ('pointer', 'fg:#58a6ff bold'),
+            ('highlighted', 'fg:#58a6ff bold'),
+            ('selected', 'fg:#3fb9a2'),
+            ('answer', 'fg:#79c0ff bold'),
+            ('text', 'fg:#c9d1d9'),
         ])
     ).ask_async()
     
@@ -400,8 +400,8 @@ async def run_search_flow(scr: FlixScraper, db: Database, link_only: bool, json_
     recent = db.get_recent()
     if recent:
         recent_text = Text()
-        recent_text.append("Recent: ", style="grey50")
-        recent_text.append(", ".join(r[0] for r in recent), style="grey70")
+        recent_text.append("Recent: ", style="#8b949e")
+        recent_text.append(", ".join(r[0] for r in recent), style="#c9d1d9")
         console.print()
         console.print(recent_text)
 
