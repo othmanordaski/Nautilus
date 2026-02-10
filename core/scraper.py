@@ -8,6 +8,13 @@ from models.media import MediaItem
 from utils.config import config
 from rich.console import Console
 
+# Use lxml for faster parsing if available, otherwise fall back to html.parser
+try:
+    import lxml  # noqa: F401
+    _HTML_PARSER = "lxml"
+except ImportError:
+    _HTML_PARSER = "html.parser"
+
 console = Console()
 
 
@@ -88,7 +95,7 @@ class FlixScraper:
             return []
         
         try:
-            soup = BeautifulSoup(resp.text, "html.parser")
+            soup = BeautifulSoup(resp.text, _HTML_PARSER)
             results = []
             for item in soup.select(".flw-item"):
                 link = item.select_one(".film-name a")
@@ -110,7 +117,7 @@ class FlixScraper:
             if not resp:
                 return []
             
-            soup = BeautifulSoup(resp.text, "html.parser")
+            soup = BeautifulSoup(resp.text, _HTML_PARSER)
             items = soup.select(".dropdown-item[data-id]")
             return [
                 {"id": el["data-id"], "number": i + 1, "label": el.get_text(strip=True) or f"Season {i + 1}"}
@@ -126,7 +133,7 @@ class FlixScraper:
             if not resp:
                 return []
             
-            soup = BeautifulSoup(resp.text, "html.parser")
+            soup = BeautifulSoup(resp.text, _HTML_PARSER)
             items = soup.select(".nav-item a[data-id]")
             return [{"id": el["data-id"], "number": i + 1} for i, el in enumerate(items)]
         except Exception as e:
@@ -135,7 +142,7 @@ class FlixScraper:
 
     def _pick_server_id(self, html: str) -> Optional[str]:
         """Parse servers page and return data-id for the configured provider (lobster: grep $provider)."""
-        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(html, _HTML_PARSER)
         for a in soup.select("a[data-id][title]"):
             if self.provider.lower() in (a.get("title") or "").lower():
                 return a.get("data-id")
