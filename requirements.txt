@@ -6,8 +6,6 @@ anyio>=4.4.0
 beautifulsoup4>=4.11.0
 questionary>=2.0.0
 
-# Optional: faster HTML parsing (used by BeautifulSoup)
-lxml>=4.9.0
-
-# Optional: download support (used by --download / -d)
-yt-dlp>=2023.0.0
+# Optional dependencies (install manually if needed):
+# pip install lxml        — faster HTML parsing
+# pip install yt-dlp      — video downloads (-d flag)

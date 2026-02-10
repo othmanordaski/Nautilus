@@ -12,7 +12,7 @@ from rich.console import Console
 try:
     import lxml  # noqa: F401
     _HTML_PARSER = "lxml"
-except ImportError:
+except Exception:
     _HTML_PARSER = "html.parser"
 
 console = Console()
