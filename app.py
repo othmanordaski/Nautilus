@@ -5,9 +5,11 @@ Search → Movie/TV → Season → Episode → Play (mpv) with provider, subs, q
 import argparse
 import asyncio
 import os
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from __version__ import __version__
@@ -234,7 +236,7 @@ def _show_and_maybe_play(data, link_only: bool, json_output: bool, download: boo
         _download_video(url, title, download_dir or config.get("download_dir") or ".", subs)
         return
 
-    tmp = Path(os.environ.get("TMPDIR", os.environ.get("TEMP", "/tmp"))) / "nautilus_stream.txt"
+    tmp = Path(tempfile.gettempdir()) / "nautilus_stream.txt"
     if url:
         tmp.write_text(url, encoding="utf-8")
     stream_panel(url or "", str(tmp))
@@ -653,10 +655,14 @@ async def run():
     _apply_cli_config(args)
 
     if args.edit:
+        from utils.paths import default_editor
         cfg_path = config.DEFAULT_CONFIG_PATH
         cfg_path.parent.mkdir(parents=True, exist_ok=True)
-        editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "nano"
-        os.system(f"{editor} {cfg_path}")
+        editor = default_editor()
+        if sys.platform == "win32":
+            os.system(f'{editor} "{cfg_path}"')
+        else:
+            os.system(f"{shlex.quote(editor)} {shlex.quote(str(cfg_path))}")
         return
 
     banner()

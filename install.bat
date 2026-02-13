@@ -1,5 +1,6 @@
 @echo off
 REM Nautilus Installation Script for Windows
+REM Uses an isolated virtual environment — mirrors install.sh behavior
 setlocal enabledelayedexpansion
 
 echo ====================================
@@ -20,7 +21,7 @@ echo [OK] Python found
 python --version
 
 REM Check for pip
-where pip >nul 2>&1
+python -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] pip is not installed. Please reinstall Python with pip.
     pause
@@ -30,14 +31,40 @@ if %errorlevel% neq 0 (
 echo [OK] pip found
 echo.
 
-REM Install package in editable mode
+REM ── Create isolated virtual environment ──
+set "VENV_DIR=%LOCALAPPDATA%\nautilus-venv"
+
+if not exist "%VENV_DIR%\Scripts\python.exe" (
+    echo Creating isolated environment at %VENV_DIR%...
+    python -m venv "%VENV_DIR%"
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to create virtual environment
+        pause
+        exit /b 1
+    )
+)
+
+echo [OK] Virtual environment ready
+
+REM Install package into the venv
 echo Installing Python dependencies...
-pip install -e .
+"%VENV_DIR%\Scripts\pip" install -e .
 if %errorlevel% neq 0 (
     echo [ERROR] Failed to install dependencies
     pause
     exit /b 1
 )
+
+REM ── Add a launcher shim to user PATH ──
+set "BIN_DIR=%LOCALAPPDATA%\Microsoft\WindowsApps"
+REM WindowsApps is already on PATH for most Windows installs; alternatively use %USERPROFILE%\.local\bin
+
+REM Create a small wrapper script so 'nautilus' works from any terminal
+set "SHIM=%VENV_DIR%\nautilus.cmd"
+(
+    echo @echo off
+    echo "%VENV_DIR%\Scripts\python.exe" -m app %%*
+) > "%SHIM%"
 
 echo.
 echo Checking optional dependencies...
@@ -86,12 +113,22 @@ echo ====================================
 echo   Installation complete!
 echo ====================================
 echo.
+echo Virtual environment: %VENV_DIR%
+echo.
+echo To run Nautilus, use the venv directly:
+echo   "%VENV_DIR%\Scripts\nautilus.exe"
+echo.
+echo Or add the venv Scripts folder to your PATH:
+echo   set PATH=%VENV_DIR%\Scripts;%%PATH%%
+echo.
 echo Usage:
 echo   nautilus                    # Start interactive search
 echo   nautilus "Breaking Bad"     # Search directly
 echo   nautilus -c                 # Continue watching
 echo   nautilus -d                 # Download mode
 echo.
-echo Configuration: nautilus_config.json in project directory
+echo Configuration is auto-detected:
+echo   Platform default: %%APPDATA%%\nautilus\config.json
+echo   Portable mode:    nautilus_config.json (next to project)
 echo.
 pause

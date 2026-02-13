@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import sys
 import hashlib
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional, List, Tuple
@@ -113,7 +114,7 @@ class MediaPlayer:
             cmd.append(f"--watch-later-directory={watchlater_dir}")
 
         # Optional: IPC socket for scripting (e.g. progress); same idea as lobster
-        socket_path = Path(os.environ.get("TMPDIR", "/tmp")) / "nautilus.sock"
+        socket_path = Path(tempfile.gettempdir()) / "nautilus.sock"
         if sys.platform != "win32" and socket_path.parent.exists():
             cmd.append(f"--input-ipc-server={socket_path}")
 

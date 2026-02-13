@@ -1,17 +1,16 @@
 """History storage: lobster-style full state (position, TV season/episode) for continue & next episode."""
 import sqlite3
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional, Any
 from utils.config import config
+from utils.paths import history_db
 
 
 class Database:
     def __init__(self):
-        path = config.get("history_db") or "nautilus.db"
-        if not path.startswith("/") and not path.startswith(".") and ":" not in path[:2]:
-            path = str(Path(__file__).parent.parent / path)
-        self.conn = sqlite3.connect(path)
+        db_path = history_db(config.get("history_db") or "")
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(str(db_path))
         self._create_tables()
 
     def _create_tables(self):

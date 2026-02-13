@@ -1,19 +1,19 @@
 import json
-import os
 from pathlib import Path
 
+from utils.paths import config_file, watchlater_dir as _default_watchlater_dir
+
+
 class Config:
-    BASE_DIR = Path(__file__).parent.parent
-    DEFAULT_CONFIG_PATH = BASE_DIR / "nautilus_config.json"
-    _default_watchlater = Path(os.environ.get("TMPDIR", os.environ.get("TEMP", "/tmp"))) / "nautilus_watchlater"
+    DEFAULT_CONFIG_PATH = config_file()
 
     DEFAULTS = {
         "base_url": "https://flixhq.to",
         "decrypt_api": "https://dec.eatmynerds.live",
         "player": "mpv",
-        "history_db": "nautilus.db",
-        "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-        "watchlater_dir": str(_default_watchlater),
+        "history_db": "",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+        "watchlater_dir": str(_default_watchlater_dir()),
         "provider": "Vidcloud",
         "subs_language": "english",
         "quality": "1080",
@@ -34,5 +34,6 @@ class Config:
 
     def get(self, key):
         return self.settings.get(key)
+
 
 config = Config()
